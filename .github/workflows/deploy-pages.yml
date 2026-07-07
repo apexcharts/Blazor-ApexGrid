@@ -64,6 +64,12 @@ jobs:
       - name: Add .nojekyll file
         run: touch publish/wwwroot/.nojekyll
 
+      # The demo is a multi-route SPA (/, /tree, ...). GitHub Pages has no server-side
+      # rewrite, so deep links 404 unless we serve the Blazor host page as the 404
+      # fallback; Blazor then client-routes to the requested path.
+      - name: Add SPA 404 fallback
+        run: cp publish/wwwroot/index.html publish/wwwroot/404.html
+
       - name: upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
