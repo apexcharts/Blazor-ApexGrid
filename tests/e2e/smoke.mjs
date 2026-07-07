@@ -120,8 +120,11 @@ if (newErrors.length) failures.push(`errors during interactions: ${JSON.stringif
 // Both features rely on interop that supplies a callback to the web component: tree builds
 // getDataPath from a row field, and master-detail builds a detailTemplate that returns a DOM
 // node from an HTML string. Verify both grids render and the detail expansion round-trips.
+// Navigate via the in-app nav link (client-side routing) rather than a fresh page load.
+// This mirrors real usage and avoids the benign HTTP 404 that GitHub Pages returns for a
+// deep link to a SPA route (it serves the 404.html host page; the app still boots and routes).
 const treeErrBefore = pageErrors.length;
-await page.goto(BASE + "/tree", { waitUntil: "domcontentloaded" });
+await page.getByRole("link", { name: "Tree & master-detail" }).click();
 await page.waitForSelector("apex-grid", { timeout: 90000 }).catch(() => {});
 await page.waitForTimeout(2500);
 
