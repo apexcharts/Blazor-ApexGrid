@@ -66,18 +66,39 @@ if (rows === 0) failures.push("grid rendered no rows");
 if (pageErrors.length) failures.push(`console/page errors: ${JSON.stringify(pageErrors)}`);
 console.log(`[render] defined=${defined} rows=${rows} errUi=${errUi} errors=${pageErrors.length}`);
 
-// Interaction: the quick-filter input calls the C# SetQuickFilterAsync -> element.setQuickFilter().
-// Typing "Turing" should reduce the 5 rows to 1, proving the C# -> element method bridge.
+const logText = () => page.locator("#event-log").innerText();
+const errCountBefore = pageErrors.length;
+
+// Exercise the C# -> element method bridge for sorting and paging (these should not throw).
+await page.getByRole("button", { name: "Sort name ▲", exact: true }).click();
+await page.waitForTimeout(500);
+await page.getByRole("button", { name: "Next page", exact: true }).click();
+await page.waitForTimeout(500);
+
+// Selection: "Select all" -> element.selectAllRows(). This proves BOTH directions of the bridge:
+// the C# method drives the element, and the resulting rowSelected event round-trips back to C#
+// (updating the selected count and appending to the log).
+await page.getByRole("button", { name: "Select all", exact: true }).click();
+await page.waitForTimeout(800);
+const selCount = parseInt(await page.locator("#sel-count").innerText(), 10) || 0;
+if (!(selCount > 0)) failures.push(`select-all did not update the selected count (got ${selCount})`);
+if (!/rowSelected/i.test(await logText())) failures.push("rowSelected event did not round-trip to C#");
+console.log(`[selection] selected=${selCount}`);
+
+// Quick filter: the input calls C# SetQuickFilterAsync -> element.setQuickFilter().
+// Typing "Turing" narrows to the single matching row, proving the C# -> element method bridge.
 const filterInput = page.locator('input[placeholder="Quick filter..."]');
 if (await filterInput.count()) {
   await filterInput.fill("Turing");
   await page.waitForTimeout(1200);
   const filtered = await countTagDeep("apex-grid-row");
-  if (!(rows > 1 && filtered === 1)) {
-    failures.push(`quick filter did not narrow rows as expected: before=${rows} after=${filtered}`);
-  }
-  console.log(`[quick-filter] rows ${rows} -> ${filtered}`);
+  if (filtered !== 1) failures.push(`quick filter did not narrow to 1 row (got ${filtered})`);
+  console.log(`[quick-filter] rows -> ${filtered}`);
 }
+
+// No new console/page errors should have appeared during the interactions.
+const newErrors = pageErrors.slice(errCountBefore);
+if (newErrors.length) failures.push(`errors during interactions: ${JSON.stringify(newErrors)}`);
 
 await browser.close();
 
