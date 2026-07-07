@@ -225,3 +225,32 @@ public class GridPinnedRows<TItem>
     public List<TItem> Top { get; set; } = new();
     public List<TItem> Bottom { get; set; } = new();
 }
+
+// --- Row expansion / tree ----------------------------------------------------
+
+/// <summary>Fired before (rowExpanding) and after (rowExpanded) the master-detail expansion set changes.</summary>
+/// <typeparam name="TItem">The row data type.</typeparam>
+public class GridRowExpansionEventArgs<TItem>
+{
+    /// <summary>Rows that became (or will become) expanded in this change.</summary>
+    public List<TItem> Added { get; set; } = new();
+    /// <summary>Rows that became (or will become) collapsed in this change.</summary>
+    public List<TItem> Removed { get; set; } = new();
+    /// <summary>The full expansion set (before the change for -ing, after for -ed).</summary>
+    public List<TItem> Current { get; set; } = new();
+    /// <summary>The proposed full expansion set (populated on the cancellable -ing event).</summary>
+    public List<TItem> Next { get; set; } = new();
+    /// <summary>The full expansion set after the change (populated on the -ed event).</summary>
+    public List<TItem> Expanded { get; set; } = new();
+}
+
+/// <summary>Fired before (treeRowExpanding) and after (treeRowExpanded) the tree-expansion set changes.</summary>
+/// <typeparam name="TItem">The row data type.</typeparam>
+public class GridTreeRowExpansionEventArgs<TItem>
+{
+    public List<TItem> Added { get; set; } = new();
+    public List<TItem> Removed { get; set; } = new();
+    public List<TItem> Current { get; set; } = new();
+    public List<TItem> Next { get; set; } = new();
+    public List<TItem> Expanded { get; set; } = new();
+}

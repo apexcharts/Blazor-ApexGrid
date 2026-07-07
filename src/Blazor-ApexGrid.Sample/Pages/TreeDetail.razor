@@ -1,0 +1,118 @@
+@page "/tree"
+
+<PageTitle>ApexGrid tree &amp; master-detail</PageTitle>
+
+<h1>Tree data &amp; master-detail</h1>
+
+<h2>Tree data</h2>
+<p>Hierarchy is derived from each row's <code>path</code> field (a string array). No callbacks required.</p>
+
+<div style="display:flex; gap:8px; margin:0 0 0.75rem;">
+    <button id="expand-tree" @onclick="() => _tree!.ExpandAllTreeRowsAsync()">Expand all</button>
+    <button @onclick="() => _tree!.CollapseAllTreeRowsAsync()">Collapse all</button>
+</div>
+
+<ApexGrid TItem="Employee" @ref="_tree"
+          Data="_employees"
+          Columns="_employeeColumns"
+          Height="280px"
+          Tree="_treeConfig"
+          OnTreeRowExpanded="OnTreeExpanded" />
+
+<h2 style="margin-top:2rem;">Master-detail</h2>
+<p>Double-click a row's chevron to reveal a detail panel rendered from an HTML template whose <code>{field}</code> tokens are filled from the row.</p>
+
+<div style="display:flex; gap:8px; margin:0 0 0.75rem;">
+    <button id="expand-detail" @onclick="() => _detail!.ExpandAllRowsAsync()">Expand all</button>
+    <button @onclick="() => _detail!.CollapseAllRowsAsync()">Collapse all</button>
+</div>
+
+<ApexGrid TItem="Product" @ref="_detail"
+          Data="_products"
+          Columns="_productColumns"
+          Height="280px"
+          Expansion="_expansionConfig"
+          OnRowExpanded="OnDetailExpanded" />
+
+<pre id="event-log" style="margin-top:1rem; background:#f6f8fa; padding:10px; border-radius:6px; max-height:140px; overflow:auto; font-size:12px;">@_log</pre>
+
+@code {
+    private ApexGrid<Employee>? _tree;
+    private ApexGrid<Product>? _detail;
+    private string _log = "";
+
+    private readonly GridTreeConfiguration _treeConfig = new()
+    {
+        Enabled = true,
+        PathKey = "path",
+        DefaultExpanded = true,
+    };
+
+    private readonly GridExpansionConfiguration _expansionConfig = new()
+    {
+        Enabled = true,
+        DetailTemplateHtml =
+            "<div style='padding:12px 16px;'>" +
+            "<strong>{name}</strong> &mdash; {category}<br/>" +
+            "In stock: {stock} units at ${price}" +
+            "</div>",
+    };
+
+    private readonly List<GridColumn<Employee>> _employeeColumns = new()
+    {
+        new() { Key = "name", HeaderText = "Name" },
+        new() { Key = "title", HeaderText = "Title" },
+    };
+
+    private readonly List<GridColumn<Product>> _productColumns = new()
+    {
+        new() { Key = "name", HeaderText = "Product" },
+        new() { Key = "category", HeaderText = "Category" },
+        new() { Key = "price", HeaderText = "Price", Type = GridDataType.Currency },
+    };
+
+    private readonly List<Employee> _employees = new()
+    {
+        new() { Name = "Adrian", Title = "CEO", Path = new[] { "Adrian" } },
+        new() { Name = "Bryan", Title = "VP Engineering", Path = new[] { "Adrian", "Bryan" } },
+        new() { Name = "Cara", Title = "Staff Engineer", Path = new[] { "Adrian", "Bryan", "Cara" } },
+        new() { Name = "Dan", Title = "Engineer", Path = new[] { "Adrian", "Bryan", "Dan" } },
+        new() { Name = "Erin", Title = "VP Sales", Path = new[] { "Adrian", "Erin" } },
+        new() { Name = "Frank", Title = "Account Exec", Path = new[] { "Adrian", "Erin", "Frank" } },
+    };
+
+    private readonly List<Product> _products = new()
+    {
+        new() { Name = "Aurora Lamp", Category = "Lighting", Price = 79, Stock = 120 },
+        new() { Name = "Nimbus Chair", Category = "Furniture", Price = 249, Stock = 34 },
+        new() { Name = "Cobalt Mug", Category = "Kitchen", Price = 18, Stock = 500 },
+        new() { Name = "Terra Rug", Category = "Decor", Price = 340, Stock = 12 },
+    };
+
+    private void OnTreeExpanded(GridTreeRowExpansionEventArgs<Employee> e)
+        => Log($"treeRowExpanded: +{e.Added.Count}/-{e.Removed.Count}");
+
+    private void OnDetailExpanded(GridRowExpansionEventArgs<Product> e)
+        => Log($"rowExpanded: +{e.Added.Count}/-{e.Removed.Count}");
+
+    private void Log(string message)
+    {
+        _log = $"{message}\n{_log}";
+        StateHasChanged();
+    }
+
+    public class Employee
+    {
+        public string Name { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string[] Path { get; set; } = System.Array.Empty<string>();
+    }
+
+    public class Product
+    {
+        public string Name { get; set; } = "";
+        public string Category { get; set; } = "";
+        public decimal Price { get; set; }
+        public int Stock { get; set; }
+    }
+}

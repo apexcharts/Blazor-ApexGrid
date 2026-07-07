@@ -116,6 +116,31 @@ console.log(`[state] snapshot length=${stateLen}`);
 const newErrors = pageErrors.slice(errCountBefore);
 if (newErrors.length) failures.push(`errors during interactions: ${JSON.stringify(newErrors)}`);
 
+// --- Tree data + master-detail page -----------------------------------------
+// Both features rely on interop that supplies a callback to the web component: tree builds
+// getDataPath from a row field, and master-detail builds a detailTemplate that returns a DOM
+// node from an HTML string. Verify both grids render and the detail expansion round-trips.
+const treeErrBefore = pageErrors.length;
+await page.goto(BASE + "/tree", { waitUntil: "domcontentloaded" });
+await page.waitForSelector("apex-grid", { timeout: 90000 }).catch(() => {});
+await page.waitForTimeout(2500);
+
+const grids = await page.evaluate(() => document.querySelectorAll("apex-grid").length);
+const treeRows = await countTagDeep("apex-grid-row");
+if (grids !== 2) failures.push(`expected 2 grids on /tree (got ${grids})`);
+if (treeRows === 0) failures.push("tree/detail page rendered no rows");
+console.log(`[tree-page] grids=${grids} rows=${treeRows}`);
+
+// Master-detail: "Expand all" -> element.expandAllRows(); rowExpanded round-trips to C#.
+await page.getByRole("button", { name: "Expand all", exact: true }).nth(1).click();
+await page.waitForTimeout(700);
+if (!/rowExpanded/i.test(await page.locator("#event-log").innerText()))
+  failures.push("rowExpanded event did not round-trip to C# (master-detail)");
+else console.log(`[master-detail] rowExpanded round-tripped`);
+
+const treeErrors = pageErrors.slice(treeErrBefore);
+if (treeErrors.length) failures.push(`errors on /tree: ${JSON.stringify(treeErrors)}`);
+
 await browser.close();
 
 if (failures.length) {

@@ -48,6 +48,12 @@
     /// <summary>Enable drag-and-drop column reordering on the headers.</summary>
     [Parameter] public bool ColumnReordering { get; set; }
 
+    /// <summary>Tree-data (nested rows) configuration.</summary>
+    [Parameter] public GridTreeConfiguration? Tree { get; set; }
+
+    /// <summary>Master-detail row-expansion configuration.</summary>
+    [Parameter] public GridExpansionConfiguration? Expansion { get; set; }
+
     /// <summary>Height of the grid (CSS value). The grid needs a bounded height for row virtualization.</summary>
     [Parameter] public string Height { get; set; } = "400px";
 
@@ -90,6 +96,12 @@
     [Parameter] public EventCallback<GridRowMovingEventArgs<TItem>> OnRowMoving { get; set; }
     [Parameter] public EventCallback<GridRowMovingEventArgs<TItem>> OnRowMoved { get; set; }
 
+    // --- Events (master-detail expansion / tree) ----------------------------
+    [Parameter] public EventCallback<GridRowExpansionEventArgs<TItem>> OnRowExpanding { get; set; }
+    [Parameter] public EventCallback<GridRowExpansionEventArgs<TItem>> OnRowExpanded { get; set; }
+    [Parameter] public EventCallback<GridTreeRowExpansionEventArgs<TItem>> OnTreeRowExpanding { get; set; }
+    [Parameter] public EventCallback<GridTreeRowExpansionEventArgs<TItem>> OnTreeRowExpanded { get; set; }
+
     private async Task<IJSObjectReference> GetModuleAsync()
         => _module ??= await JSRuntime.InvokeAsync<IJSObjectReference>(
             "import", "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=3.3.0");
@@ -127,6 +139,8 @@
         rowPinning = RowPinning,
         rowReordering = RowReordering,
         columnReordering = ColumnReordering,
+        tree = Tree,
+        expansion = Expansion,
     });
     private string DataHash() => (Data?.GetHashCode() ?? 0).ToString() + ":" + (Data?.Count() ?? 0);
 
@@ -334,6 +348,58 @@
     public async Task<bool> MoveRowAsync(int from, int to, string position = "before")
         => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("moveRow", _elementId, from, to, position);
 
+    // --- Master-detail expansion (rows identified by Data index) -------------
+
+    /// <summary>Expands the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> ExpandRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandRow", _elementId, dataIndex);
+
+    /// <summary>Collapses the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> CollapseRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseRow", _elementId, dataIndex);
+
+    /// <summary>Toggles the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> ToggleRowExpansionAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("toggleRowExpansion", _elementId, dataIndex);
+
+    /// <summary>Expands every expandable row.</summary>
+    public async Task<bool> ExpandAllRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandAllRows", _elementId);
+
+    /// <summary>Collapses every expanded row.</summary>
+    public async Task<bool> CollapseAllRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseAllRows", _elementId);
+
+    /// <summary>Whether the row at the given <see cref="Data"/> index is expanded.</summary>
+    public async Task<bool> IsRowExpandedAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("isRowExpanded", _elementId, dataIndex);
+
+    // --- Tree data (rows identified by Data index) --------------------------
+
+    /// <summary>Toggles tree-expansion of the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> ToggleTreeRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("toggleTreeRow", _elementId, dataIndex);
+
+    /// <summary>Expands the tree row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> ExpandTreeRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandTreeRow", _elementId, dataIndex);
+
+    /// <summary>Collapses the tree row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> CollapseTreeRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseTreeRow", _elementId, dataIndex);
+
+    /// <summary>Expands every parent row in the tree.</summary>
+    public async Task<bool> ExpandAllTreeRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandAllTreeRows", _elementId);
+
+    /// <summary>Collapses every expanded tree row.</summary>
+    public async Task<bool> CollapseAllTreeRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseAllTreeRows", _elementId);
+
+    /// <summary>Whether the tree row at the given <see cref="Data"/> index is expanded.</summary>
+    public async Task<bool> IsTreeRowExpandedAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("isTreeRowExpanded", _elementId, dataIndex);
+
     // --- JS -> .NET event bridge --------------------------------------------
     [JSInvokable] public Task HandleSorting(GridSortEventArgs a) => Invoke(OnSorting, a);
     [JSInvokable] public Task HandleSorted(GridSortEventArgs a) => Invoke(OnSorted, a);
@@ -360,6 +426,10 @@
     [JSInvokable] public Task HandleRowPinned(GridRowPinningEventArgs<TItem> a) => Invoke(OnRowPinned, a);
     [JSInvokable] public Task HandleRowMoving(GridRowMovingEventArgs<TItem> a) => Invoke(OnRowMoving, a);
     [JSInvokable] public Task HandleRowMoved(GridRowMovingEventArgs<TItem> a) => Invoke(OnRowMoved, a);
+    [JSInvokable] public Task HandleRowExpanding(GridRowExpansionEventArgs<TItem> a) => Invoke(OnRowExpanding, a);
+    [JSInvokable] public Task HandleRowExpanded(GridRowExpansionEventArgs<TItem> a) => Invoke(OnRowExpanded, a);
+    [JSInvokable] public Task HandleTreeRowExpanding(GridTreeRowExpansionEventArgs<TItem> a) => Invoke(OnTreeRowExpanding, a);
+    [JSInvokable] public Task HandleTreeRowExpanded(GridTreeRowExpansionEventArgs<TItem> a) => Invoke(OnTreeRowExpanded, a);
 
     private static Task Invoke<T>(EventCallback<T> callback, T args)
         => callback.HasDelegate ? callback.InvokeAsync(args) : Task.CompletedTask;

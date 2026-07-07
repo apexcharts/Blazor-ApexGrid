@@ -94,6 +94,51 @@ public class GridRowReorderingConfiguration
     public bool? Handle { get; set; }
 }
 
+/// <summary>
+/// Tree-data (nested rows) configuration. The data array stays flat; the grid derives the
+/// hierarchy from each row's path array, read from the <see cref="PathKey"/> field.
+/// </summary>
+public class GridTreeConfiguration
+{
+    /// <summary>Enable tree mode.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// The row field (serialized/camelCase name) holding the hierarchical path, a string array
+    /// from root to the row (e.g. ["Adrian"], ["Adrian", "Bryan"]). Required when enabled.
+    /// </summary>
+    public string PathKey { get; set; } = string.Empty;
+
+    /// <summary>Which column shows the chevron + indentation. Defaults to the first visible column.</summary>
+    public string? GroupColumnKey { get; set; }
+
+    /// <summary>Initial expansion: false (collapsed), true (all), or a depth number.</summary>
+    public object? DefaultExpanded { get; set; }
+
+    /// <summary>Pixels of indentation per depth level. Defaults to 20.</summary>
+    public int? ChildIndent { get; set; }
+}
+
+/// <summary>
+/// Master-detail row-expansion configuration. The detail panel is rendered from
+/// <see cref="DetailTemplateHtml"/>, an HTML string whose <c>{field}</c> tokens are replaced with
+/// the row's (HTML-escaped) values.
+/// </summary>
+public class GridExpansionConfiguration
+{
+    /// <summary>Enable row expansion.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// HTML template for the detail panel. <c>{field}</c> tokens are substituted with the matching
+    /// row field's value (HTML-escaped). Required when enabled.
+    /// </summary>
+    public string DetailTemplateHtml { get; set; } = string.Empty;
+
+    /// <summary>Render the built-in chevron toggle column. Defaults to true.</summary>
+    public bool? ShowToggleColumn { get; set; }
+}
+
 /// <summary>Row-selection configuration.</summary>
 public class GridSelectionConfiguration
 {

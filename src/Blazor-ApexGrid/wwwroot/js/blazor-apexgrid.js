@@ -40,7 +40,48 @@ const EVENT_HANDLERS = {
   rowPinned: "HandleRowPinned",
   rowMoving: "HandleRowMoving",
   rowMoved: "HandleRowMoved",
+  // master-detail expansion / tree
+  rowExpanding: "HandleRowExpanding",
+  rowExpanded: "HandleRowExpanded",
+  treeRowExpanding: "HandleTreeRowExpanding",
+  treeRowExpanded: "HandleTreeRowExpanded",
 };
+
+// Escape a value for safe interpolation into a detail-template HTML string.
+function escapeHtml(v) {
+  return String(v ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
+}
+
+// Build the core's tree config from our serializable form: getDataPath reads a row field.
+function buildTreeConfig(cfg) {
+  const tree = {
+    enabled: cfg.enabled,
+    getDataPath: (row) => row?.[cfg.pathKey] ?? [],
+  };
+  if (cfg.groupColumnKey) tree.groupColumnKey = cfg.groupColumnKey;
+  if (cfg.defaultExpanded !== undefined && cfg.defaultExpanded !== null)
+    tree.defaultExpanded = cfg.defaultExpanded;
+  if (typeof cfg.childIndent === "number") tree.childIndent = cfg.childIndent;
+  return tree;
+}
+
+// Build the core's expansion config: detailTemplate returns a DOM node rendered from an
+// author-supplied HTML string, with {field} tokens replaced by the row's escaped values.
+function buildExpansionConfig(cfg) {
+  const html = cfg.detailTemplateHtml || "";
+  const expansion = {
+    enabled: cfg.enabled,
+    detailTemplate: ({ data }) => {
+      const node = document.createElement("div");
+      node.innerHTML = html.replace(/\{(\w+)\}/g, (_, key) => escapeHtml(data?.[key]));
+      return node;
+    },
+  };
+  if (typeof cfg.showToggleColumn === "boolean") expansion.showToggleColumn = cfg.showToggleColumn;
+  return expansion;
+}
 
 function chartOf(elementId) {
   const el = grids[elementId];
@@ -69,6 +110,8 @@ export async function init(elementId, dataJson, columnsJson, configJson, dotNetR
     if (cfg.rowPinning) el.rowPinning = cfg.rowPinning;
     if (cfg.rowReordering) el.rowReordering = cfg.rowReordering;
     if (typeof cfg.columnReordering === "boolean") el.columnReordering = cfg.columnReordering;
+    if (cfg.tree && cfg.tree.enabled) el.tree = buildTreeConfig(cfg.tree);
+    if (cfg.expansion && cfg.expansion.enabled) el.expansion = buildExpansionConfig(cfg.expansion);
   }
 
   el.data = JSON.parse(dataJson);
@@ -219,6 +262,58 @@ export function getPinnedRows(elementId) {
 }
 export function moveRow(elementId, from, to, position) {
   return chartOf(elementId).moveRow(from, to, position || "before");
+}
+
+// --- Master-detail expansion -------------------------------------------------
+function rowAt(elementId, index) {
+  const el = chartOf(elementId);
+  return { el, row: el.data?.[index] };
+}
+export function expandRow(elementId, index) {
+  const { el, row } = rowAt(elementId, index);
+  return row ? el.expandRow(row) : false;
+}
+export function collapseRow(elementId, index) {
+  const { el, row } = rowAt(elementId, index);
+  return row ? el.collapseRow(row) : false;
+}
+export function toggleRowExpansion(elementId, index) {
+  const { el, row } = rowAt(elementId, index);
+  return row ? el.toggleRowExpansion(row) : false;
+}
+export function expandAllRows(elementId) {
+  return chartOf(elementId).expandAllRows();
+}
+export function collapseAllRows(elementId) {
+  return chartOf(elementId).collapseAllRows();
+}
+export function isRowExpanded(elementId, index) {
+  const { el, row } = rowAt(elementId, index);
+  return row ? el.isRowExpanded(row) : false;
+}
+
+// --- Tree data ---------------------------------------------------------------
+export function toggleTreeRow(elementId, index) {
+  const { el, row } = rowAt(elementId, index);
+  return row ? el.toggleTreeRow(row) : false;
+}
+export function expandTreeRow(elementId, index) {
+  const { el, row } = rowAt(elementId, index);
+  return row ? el.expandTreeRow(row) : false;
+}
+export function collapseTreeRow(elementId, index) {
+  const { el, row } = rowAt(elementId, index);
+  return row ? el.collapseTreeRow(row) : false;
+}
+export function expandAllTreeRows(elementId) {
+  return chartOf(elementId).expandAllTreeRows();
+}
+export function collapseAllTreeRows(elementId) {
+  return chartOf(elementId).collapseAllTreeRows();
+}
+export function isTreeRowExpanded(elementId, index) {
+  const { el, row } = rowAt(elementId, index);
+  return row ? el.isTreeRowExpanded(row) : false;
 }
 
 export function destroy(elementId) {
