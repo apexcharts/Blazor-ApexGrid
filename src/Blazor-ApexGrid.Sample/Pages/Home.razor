@@ -3,16 +3,48 @@
 <PageTitle>Blazor ApexGrid</PageTitle>
 
 <h1>Blazor ApexGrid</h1>
-<p>A typed <code>ApexGrid&lt;TItem&gt;</code> bound to <code>Data</code> and <code>Columns</code>, rendering the bundled apex-grid web component.</p>
+<p>A typed <code>ApexGrid&lt;TItem&gt;</code> with sorting, filtering, pagination, selection, and events.</p>
 
-<div style="margin: 0.5rem 0 1rem;">
-    <input placeholder="Quick filter..." @oninput="OnFilter" style="padding: 6px 10px; width: 260px;" />
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin:0.5rem 0 1rem; align-items:center;">
+    <input placeholder="Quick filter..." @oninput="OnFilter" style="padding:6px 10px; width:220px;" />
+    <button @onclick="SortByNameAsc">Sort name ▲</button>
+    <button @onclick="() => _grid!.ClearSortAsync()">Clear sort</button>
+    <button @onclick="() => _grid!.SelectAllRowsAsync()">Select all</button>
+    <button @onclick="() => _grid!.ClearSelectionAsync()">Clear selection</button>
+    <button @onclick="() => _grid!.NextPageAsync()">Next page</button>
+    <button @onclick="() => _grid!.PreviousPageAsync()">Prev page</button>
+    <span>Selected: <strong id="sel-count">@_selectedCount</strong></span>
 </div>
 
-<ApexGrid TItem="Person" @ref="_grid" Data="_people" Columns="_columns" Height="360px" />
+<ApexGrid TItem="Person" @ref="_grid"
+          Data="_people"
+          Columns="_columns"
+          Height="360px"
+          SortConfiguration="_sort"
+          Pagination="_pagination"
+          Selection="_selection"
+          OnSorted="OnSorted"
+          OnRowSelected="OnRowSelected"
+          OnPageChanged="OnPageChanged" />
+
+<pre id="event-log" style="margin-top:1rem; background:#f6f8fa; padding:10px; border-radius:6px; max-height:160px; overflow:auto; font-size:12px;">@_log</pre>
 
 @code {
     private ApexGrid<Person>? _grid;
+    private int _selectedCount;
+    private string _log = "";
+
+    private readonly GridSortConfiguration _sort = new() { Multiple = true, TriState = true };
+    private readonly PaginationConfiguration _pagination = new() { Enabled = true, PageSize = 5, PageSizeOptions = new() { 5, 10, 25 } };
+    private readonly GridSelectionConfiguration _selection = new() { Enabled = true, Mode = SelectionMode.Multiple, ShowCheckboxColumn = true };
+
+    private readonly List<GridColumn<Person>> _columns = new()
+    {
+        new() { Key = "name", HeaderText = "Name", Sort = true, Filter = true },
+        new() { Key = "age", HeaderText = "Age", Type = GridDataType.Number, Sort = true },
+        new() { Key = "role", HeaderText = "Role", Filter = true, Sort = true },
+        new() { Key = "active", HeaderText = "Active", Type = GridDataType.Boolean },
+    };
 
     private readonly List<Person> _people = new()
     {
@@ -21,20 +53,37 @@
         new() { Name = "Grace Hopper", Age = 44, Role = "Rear Admiral", Active = false },
         new() { Name = "Katherine Johnson", Age = 52, Role = "Physicist", Active = true },
         new() { Name = "Edsger Dijkstra", Age = 48, Role = "Programmer", Active = false },
-    };
-
-    private readonly List<GridColumn<Person>> _columns = new()
-    {
-        new() { Key = "name", HeaderText = "Name", Sort = true, Filter = true },
-        new() { Key = "age", HeaderText = "Age", Type = GridDataType.Number, Sort = true },
-        new() { Key = "role", HeaderText = "Role", Filter = true },
-        new() { Key = "active", HeaderText = "Active", Type = GridDataType.Boolean },
+        new() { Name = "Barbara Liskov", Age = 45, Role = "Computer Scientist", Active = true },
+        new() { Name = "Donald Knuth", Age = 55, Role = "Author", Active = true },
+        new() { Name = "Margaret Hamilton", Age = 42, Role = "Engineer", Active = true },
+        new() { Name = "Linus Torvalds", Age = 39, Role = "Programmer", Active = false },
+        new() { Name = "Tim Berners-Lee", Age = 50, Role = "Inventor", Active = true },
     };
 
     private async Task OnFilter(ChangeEventArgs e)
     {
+        if (_grid is not null) await _grid.SetQuickFilterAsync(e.Value?.ToString() ?? "");
+    }
+
+    private async Task SortByNameAsc()
+    {
         if (_grid is not null)
-            await _grid.SetQuickFilterAsync(e.Value?.ToString() ?? "");
+            await _grid.SortAsync(new GridSortExpression { Key = "name", Direction = SortingDirection.Ascending });
+    }
+
+    private void OnSorted(GridSortEventArgs e) => Log($"sorted: {e.Key} {e.Direction}");
+    private void OnPageChanged(GridPageChangedEventArgs e) => Log($"pageChanged: page {e.Page + 1}/{e.PageCount} (size {e.PageSize})");
+
+    private void OnRowSelected(GridRowSelectedEventArgs<Person> e)
+    {
+        _selectedCount = e.Selected.Count;
+        Log($"rowSelected: {e.Selected.Count} selected (+{e.Added.Count}/-{e.Removed.Count})");
+    }
+
+    private void Log(string message)
+    {
+        _log = $"{message}\n{_log}";
+        StateHasChanged();
     }
 
     public class Person

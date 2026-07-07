@@ -16,6 +16,7 @@
 @code {
     private readonly string _elementId = $"apex-grid-{Guid.NewGuid():N}";
     private IJSObjectReference? _module;
+    private DotNetObjectReference<ApexGrid<TItem>>? _dotNetRef;
     private bool _initialized;
     private string? _lastDataHash;
 
@@ -24,6 +25,15 @@
 
     /// <summary>The column definitions.</summary>
     [Parameter] public List<GridColumn<TItem>>? Columns { get; set; }
+
+    /// <summary>Grid-wide sorting behavior.</summary>
+    [Parameter] public GridSortConfiguration? SortConfiguration { get; set; }
+
+    /// <summary>Pagination configuration.</summary>
+    [Parameter] public PaginationConfiguration? Pagination { get; set; }
+
+    /// <summary>Row-selection configuration.</summary>
+    [Parameter] public GridSelectionConfiguration? Selection { get; set; }
 
     /// <summary>Height of the grid (CSS value). The grid needs a bounded height for row virtualization.</summary>
     [Parameter] public string Height { get; set; } = "400px";
@@ -34,6 +44,19 @@
     /// <summary>Inline styles for the wrapper element.</summary>
     [Parameter] public string? Style { get; set; }
 
+    // --- Events (data pipeline + selection) ---------------------------------
+    [Parameter] public EventCallback<GridSortEventArgs> OnSorting { get; set; }
+    [Parameter] public EventCallback<GridSortEventArgs> OnSorted { get; set; }
+    [Parameter] public EventCallback<GridFilteringEventArgs> OnFiltering { get; set; }
+    [Parameter] public EventCallback<GridFilteredEventArgs> OnFiltered { get; set; }
+    [Parameter] public EventCallback<GridPageChangingEventArgs> OnPageChanging { get; set; }
+    [Parameter] public EventCallback<GridPageChangedEventArgs> OnPageChanged { get; set; }
+    [Parameter] public EventCallback<GridQuickFilterChangingEventArgs> OnQuickFilterChanging { get; set; }
+    [Parameter] public EventCallback<GridQuickFilterChangedEventArgs> OnQuickFilterChanged { get; set; }
+    [Parameter] public EventCallback<GridRowSelectingEventArgs<TItem>> OnRowSelecting { get; set; }
+    [Parameter] public EventCallback<GridRowSelectedEventArgs<TItem>> OnRowSelected { get; set; }
+    [Parameter] public EventCallback<GridStateChangedEventArgs> OnStateChanged { get; set; }
+
     private async Task<IJSObjectReference> GetModuleAsync()
         => _module ??= await JSRuntime.InvokeAsync<IJSObjectReference>(
             "import", "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=3.3.0");
@@ -43,13 +66,13 @@
         if (firstRender)
         {
             var module = await GetModuleAsync();
+            _dotNetRef = DotNetObjectReference.Create(this);
             _lastDataHash = DataHash();
             _initialized = await module.InvokeAsync<bool>(
-                "init", _elementId, SerializeData(), SerializeColumns());
+                "init", _elementId, SerializeData(), SerializeColumns(), SerializeConfig(), _dotNetRef);
         }
         else if (_initialized)
         {
-            // re-push data when it changes (columns are treated as set-once for now)
             var hash = DataHash();
             if (hash != _lastDataHash)
             {
@@ -62,32 +85,116 @@
 
     private string SerializeData() => GridSerializer.Serialize(Data ?? Enumerable.Empty<TItem>());
     private string SerializeColumns() => GridSerializer.Serialize(Columns ?? new List<GridColumn<TItem>>());
+    private string SerializeConfig() => GridSerializer.Serialize(new
+    {
+        sortConfiguration = SortConfiguration,
+        pagination = Pagination,
+        selection = Selection,
+    });
     private string DataHash() => (Data?.GetHashCode() ?? 0).ToString() + ":" + (Data?.Count() ?? 0);
+
+    // --- Public API ----------------------------------------------------------
 
     /// <summary>Re-pushes the current <see cref="Data"/> and <see cref="Columns"/> to the grid.</summary>
     public async Task RefreshAsync()
     {
         if (!_initialized) return;
-        var module = await GetModuleAsync();
-        await module.InvokeVoidAsync("setColumns", _elementId, SerializeColumns());
-        await module.InvokeVoidAsync("setData", _elementId, SerializeData());
+        var m = await GetModuleAsync();
+        await m.InvokeVoidAsync("setColumns", _elementId, SerializeColumns());
+        await m.InvokeVoidAsync("setData", _elementId, SerializeData());
+    }
+
+    /// <summary>Sorts by the given expression(s).</summary>
+    public async Task SortAsync(params GridSortExpression[] expressions)
+    {
+        if (!_initialized) return;
+        var m = await GetModuleAsync();
+        await m.InvokeVoidAsync("sort", _elementId, GridSerializer.Serialize(expressions));
+    }
+
+    /// <summary>Clears sorting (all columns, or one when a key is given).</summary>
+    public async Task ClearSortAsync(string? key = null)
+    {
+        if (!_initialized) return;
+        var m = await GetModuleAsync();
+        await m.InvokeVoidAsync("clearSort", _elementId, key);
+    }
+
+    /// <summary>Applies the given filter expression(s).</summary>
+    public async Task FilterAsync(params GridFilterExpression[] expressions)
+    {
+        if (!_initialized) return;
+        var m = await GetModuleAsync();
+        await m.InvokeVoidAsync("filter", _elementId, GridSerializer.Serialize(expressions));
+    }
+
+    /// <summary>Clears filtering (all columns, or one when a key is given).</summary>
+    public async Task ClearFilterAsync(string? key = null)
+    {
+        if (!_initialized) return;
+        var m = await GetModuleAsync();
+        await m.InvokeVoidAsync("clearFilter", _elementId, key);
     }
 
     /// <summary>Applies a quick (full-text) filter across the grid's filterable columns.</summary>
     public async Task SetQuickFilterAsync(string value)
     {
         if (!_initialized) return;
-        var module = await GetModuleAsync();
-        await module.InvokeVoidAsync("setQuickFilter", _elementId, value);
+        var m = await GetModuleAsync();
+        await m.InvokeVoidAsync("setQuickFilter", _elementId, value);
     }
+
+    /// <summary>Navigates to a zero-based page.</summary>
+    public async Task<bool> GotoPageAsync(int page)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("gotoPage", _elementId, page);
+
+    /// <summary>Navigates to the next page.</summary>
+    public async Task<bool> NextPageAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("nextPage", _elementId);
+
+    /// <summary>Navigates to the previous page.</summary>
+    public async Task<bool> PreviousPageAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("previousPage", _elementId);
+
+    /// <summary>Navigates to the first page.</summary>
+    public async Task<bool> FirstPageAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("firstPage", _elementId);
+
+    /// <summary>Navigates to the last page.</summary>
+    public async Task<bool> LastPageAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("lastPage", _elementId);
+
+    /// <summary>Sets the page size.</summary>
+    public async Task<bool> SetPageSizeAsync(int size)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("setPageSize", _elementId, size);
 
     /// <summary>Gets the currently selected rows.</summary>
     public async Task<List<TItem>> GetSelectedRowsAsync()
-    {
-        if (!_initialized) return new();
-        var module = await GetModuleAsync();
-        return await module.InvokeAsync<List<TItem>>("getSelectedRows", _elementId);
-    }
+        => _initialized ? await (await GetModuleAsync()).InvokeAsync<List<TItem>>("getSelectedRows", _elementId) : new();
+
+    /// <summary>Selects all rows (multiple-selection mode).</summary>
+    public async Task<bool> SelectAllRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("selectAllRows", _elementId);
+
+    /// <summary>Clears the selection.</summary>
+    public async Task<bool> ClearSelectionAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("clearSelection", _elementId);
+
+    // --- JS -> .NET event bridge --------------------------------------------
+    [JSInvokable] public Task HandleSorting(GridSortEventArgs a) => Invoke(OnSorting, a);
+    [JSInvokable] public Task HandleSorted(GridSortEventArgs a) => Invoke(OnSorted, a);
+    [JSInvokable] public Task HandleFiltering(GridFilteringEventArgs a) => Invoke(OnFiltering, a);
+    [JSInvokable] public Task HandleFiltered(GridFilteredEventArgs a) => Invoke(OnFiltered, a);
+    [JSInvokable] public Task HandlePageChanging(GridPageChangingEventArgs a) => Invoke(OnPageChanging, a);
+    [JSInvokable] public Task HandlePageChanged(GridPageChangedEventArgs a) => Invoke(OnPageChanged, a);
+    [JSInvokable] public Task HandleQuickFilterChanging(GridQuickFilterChangingEventArgs a) => Invoke(OnQuickFilterChanging, a);
+    [JSInvokable] public Task HandleQuickFilterChanged(GridQuickFilterChangedEventArgs a) => Invoke(OnQuickFilterChanged, a);
+    [JSInvokable] public Task HandleRowSelecting(GridRowSelectingEventArgs<TItem> a) => Invoke(OnRowSelecting, a);
+    [JSInvokable] public Task HandleRowSelected(GridRowSelectedEventArgs<TItem> a) => Invoke(OnRowSelected, a);
+    [JSInvokable] public Task HandleStateChanged(GridStateChangedEventArgs a) => Invoke(OnStateChanged, a);
+
+    private static Task Invoke<T>(EventCallback<T> callback, T args)
+        => callback.HasDelegate ? callback.InvokeAsync(args) : Task.CompletedTask;
 
     public async ValueTask DisposeAsync()
     {
@@ -100,5 +207,6 @@
             }
             catch (JSDisconnectedException) { /* circuit already gone */ }
         }
+        _dotNetRef?.Dispose();
     }
 }
