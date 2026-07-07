@@ -1,0 +1,12 @@
+{
+  "name": "blazor-apexgrid-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Headless browser smoke test for the Blazor-ApexGrid sample. Guards against interop-only regressions (a grid that builds and serializes cleanly but fails to register, render, or wire up its web component in the browser) whenever the bundled apex-grid core is refreshed.",
+  "scripts": {
+    "test": "node smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}

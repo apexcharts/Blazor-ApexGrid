@@ -1,0 +1,14 @@
+{
+  "name": "blazor-apexgrid-build",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Bundles the apex-grid web component + its dependency tree into a single self-contained ESM vendored into the Blazor package. Not shipped; run `npm run bundle` to refresh the vendored core.",
+  "type": "module",
+  "scripts": {
+    "bundle": "node bundle.mjs"
+  },
+  "devDependencies": {
+    "apex-grid": "3.3.0",
+    "esbuild": "^0.24.0"
+  }
+}

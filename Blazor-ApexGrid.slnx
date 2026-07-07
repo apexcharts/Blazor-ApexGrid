@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Blazor-ApexGrid.Sample/Blazor-ApexGrid.Sample.csproj" />
+    <Project Path="src/Blazor-ApexGrid/Blazor-ApexGrid.csproj" />
+  </Folder>
+</Solution>

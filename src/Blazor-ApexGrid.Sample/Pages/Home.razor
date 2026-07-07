@@ -1,0 +1,47 @@
+@page "/"
+
+<PageTitle>Blazor ApexGrid</PageTitle>
+
+<h1>Blazor ApexGrid</h1>
+<p>A typed <code>ApexGrid&lt;TItem&gt;</code> bound to <code>Data</code> and <code>Columns</code>, rendering the bundled apex-grid web component.</p>
+
+<div style="margin: 0.5rem 0 1rem;">
+    <input placeholder="Quick filter..." @oninput="OnFilter" style="padding: 6px 10px; width: 260px;" />
+</div>
+
+<ApexGrid TItem="Person" @ref="_grid" Data="_people" Columns="_columns" Height="360px" />
+
+@code {
+    private ApexGrid<Person>? _grid;
+
+    private readonly List<Person> _people = new()
+    {
+        new() { Name = "Ada Lovelace", Age = 36, Role = "Mathematician", Active = true },
+        new() { Name = "Alan Turing", Age = 41, Role = "Computer Scientist", Active = true },
+        new() { Name = "Grace Hopper", Age = 44, Role = "Rear Admiral", Active = false },
+        new() { Name = "Katherine Johnson", Age = 52, Role = "Physicist", Active = true },
+        new() { Name = "Edsger Dijkstra", Age = 48, Role = "Programmer", Active = false },
+    };
+
+    private readonly List<GridColumn<Person>> _columns = new()
+    {
+        new() { Key = "name", HeaderText = "Name", Sort = true, Filter = true },
+        new() { Key = "age", HeaderText = "Age", Type = GridDataType.Number, Sort = true },
+        new() { Key = "role", HeaderText = "Role", Filter = true },
+        new() { Key = "active", HeaderText = "Active", Type = GridDataType.Boolean },
+    };
+
+    private async Task OnFilter(ChangeEventArgs e)
+    {
+        if (_grid is not null)
+            await _grid.SetQuickFilterAsync(e.Value?.ToString() ?? "");
+    }
+
+    public class Person
+    {
+        public string Name { get; set; } = "";
+        public int Age { get; set; }
+        public string Role { get; set; } = "";
+        public bool Active { get; set; }
+    }
+}
