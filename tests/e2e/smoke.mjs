@@ -96,6 +96,22 @@ if (await filterInput.count()) {
   console.log(`[quick-filter] rows -> ${filtered}`);
 }
 
+// Column pinning: the button calls C# PinColumnAsync -> element.pinColumn('name', 'start').
+// The resulting columnPinned event round-trips back to C# and is appended to the log,
+// proving both directions of the bridge for a column operation.
+await page.getByRole("button", { name: "Pin Name column", exact: true }).click();
+await page.waitForTimeout(600);
+if (!/columnPinned/i.test(await logText())) failures.push("columnPinned event did not round-trip to C#");
+console.log(`[column-pin] columnPinned round-tripped`);
+
+// State persistence: "Save state" calls C# GetStateAsync -> element.getState(), and the
+// returned JSON snapshot is marshaled back into C# (proving a data-returning method call).
+await page.getByRole("button", { name: "Save state", exact: true }).click();
+await page.waitForTimeout(400);
+const stateLen = parseInt(await page.locator("#state-len").innerText(), 10) || 0;
+if (!(stateLen > 0)) failures.push(`getState returned no snapshot (len ${stateLen})`);
+console.log(`[state] snapshot length=${stateLen}`);
+
 // No new console/page errors should have appeared during the interactions.
 const newErrors = pageErrors.slice(errCountBefore);
 if (newErrors.length) failures.push(`errors during interactions: ${JSON.stringify(newErrors)}`);
@@ -106,4 +122,7 @@ if (failures.length) {
   console.error("\nE2E SMOKE FAILED:\n" + failures.map((f) => "  - " + f).join("\n"));
   process.exit(1);
 }
-console.log("\nE2E smoke passed: grid registered, rendered rows, and quick filter round-tripped.");
+console.log(
+  "\nE2E smoke passed: grid registered and rendered; selection, quick filter, column pinning, " +
+    "and getState all round-tripped across the C# <-> element bridge."
+);

@@ -48,6 +48,52 @@ public class PaginationConfiguration
     public int? TotalItems { get; set; }
 }
 
+/// <summary>Inline-editing configuration. Per-column opt-in is still required via <see cref="GridColumn{TItem}.Editable"/>.</summary>
+public class GridEditingConfiguration
+{
+    /// <summary>Enable inline editing.</summary>
+    public bool? Enabled { get; set; }
+
+    /// <summary>Commit cells independently, or the whole row as a batch. Defaults to Cell.</summary>
+    public EditMode? Mode { get; set; }
+
+    /// <summary>Interaction that opens an editor. Defaults to DoubleClick.</summary>
+    public EditTrigger? Trigger { get; set; }
+
+    /// <summary>Undo/redo history for committed edits.</summary>
+    public EditingHistoryConfiguration? History { get; set; }
+}
+
+/// <summary>Undo/redo history configuration for cell edits.</summary>
+public class EditingHistoryConfiguration
+{
+    /// <summary>Track committed edits so they can be undone/redone.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>Maximum number of commands retained on the undo stack. Defaults to 100.</summary>
+    public int? StackSize { get; set; }
+}
+
+/// <summary>Row-pinning configuration (sticky top/bottom bands).</summary>
+public class GridRowPinningConfiguration
+{
+    /// <summary>Allow pinning rows to a sticky band.</summary>
+    public bool Enabled { get; set; }
+}
+
+/// <summary>Row-reordering configuration (drag/keyboard reorder).</summary>
+public class GridRowReorderingConfiguration
+{
+    /// <summary>Allow reordering rows. A manual order is mutually exclusive with column sorting.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>Also splice the source data array in place so it reflects the new order.</summary>
+    public bool? ApplyToData { get; set; }
+
+    /// <summary>Render a dedicated drag handle (true, default) rather than dragging the whole row.</summary>
+    public bool? Handle { get; set; }
+}
+
 /// <summary>Row-selection configuration.</summary>
 public class GridSelectionConfiguration
 {
