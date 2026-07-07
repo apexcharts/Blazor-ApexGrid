@@ -1,5 +1,6 @@
 @using System.Collections.Generic
 @using System.Linq
+@using System.Text.Json
 @using Microsoft.JSInterop
 @using Blazor_ApexGrid.Internal
 @using Blazor_ApexGrid.Models
@@ -35,6 +36,24 @@
     /// <summary>Row-selection configuration.</summary>
     [Parameter] public GridSelectionConfiguration? Selection { get; set; }
 
+    /// <summary>Inline-editing configuration.</summary>
+    [Parameter] public GridEditingConfiguration? Editing { get; set; }
+
+    /// <summary>Row-pinning configuration (sticky top/bottom bands).</summary>
+    [Parameter] public GridRowPinningConfiguration? RowPinning { get; set; }
+
+    /// <summary>Row-reordering configuration (drag/keyboard reorder).</summary>
+    [Parameter] public GridRowReorderingConfiguration? RowReordering { get; set; }
+
+    /// <summary>Enable drag-and-drop column reordering on the headers.</summary>
+    [Parameter] public bool ColumnReordering { get; set; }
+
+    /// <summary>Tree-data (nested rows) configuration.</summary>
+    [Parameter] public GridTreeConfiguration? Tree { get; set; }
+
+    /// <summary>Master-detail row-expansion configuration.</summary>
+    [Parameter] public GridExpansionConfiguration? Expansion { get; set; }
+
     /// <summary>Height of the grid (CSS value). The grid needs a bounded height for row virtualization.</summary>
     [Parameter] public string Height { get; set; } = "400px";
 
@@ -56,6 +75,32 @@
     [Parameter] public EventCallback<GridRowSelectingEventArgs<TItem>> OnRowSelecting { get; set; }
     [Parameter] public EventCallback<GridRowSelectedEventArgs<TItem>> OnRowSelected { get; set; }
     [Parameter] public EventCallback<GridStateChangedEventArgs> OnStateChanged { get; set; }
+
+    // --- Events (column operations) -----------------------------------------
+    [Parameter] public EventCallback<GridColumnPinningEventArgs> OnColumnPinning { get; set; }
+    [Parameter] public EventCallback<GridColumnPinnedEventArgs> OnColumnPinned { get; set; }
+    [Parameter] public EventCallback<GridColumnMovingEventArgs> OnColumnMoving { get; set; }
+    [Parameter] public EventCallback<GridColumnMovedEventArgs> OnColumnMoved { get; set; }
+
+    // --- Events (cell editing) ----------------------------------------------
+    [Parameter] public EventCallback<GridCellValueChangingEventArgs<TItem>> OnCellValueChanging { get; set; }
+    [Parameter] public EventCallback<GridCellValueChangedEventArgs<TItem>> OnCellValueChanged { get; set; }
+    [Parameter] public EventCallback<GridCellValidationFailedEventArgs<TItem>> OnCellValidationFailed { get; set; }
+    [Parameter] public EventCallback<GridHistoryChangedEventArgs> OnHistoryChanged { get; set; }
+    [Parameter] public EventCallback<GridRowEditStartedEventArgs> OnRowEditStarted { get; set; }
+    [Parameter] public EventCallback<GridRowEditEndedEventArgs> OnRowEditEnded { get; set; }
+
+    // --- Events (row pinning / reordering) ----------------------------------
+    [Parameter] public EventCallback<GridRowPinningEventArgs<TItem>> OnRowPinning { get; set; }
+    [Parameter] public EventCallback<GridRowPinningEventArgs<TItem>> OnRowPinned { get; set; }
+    [Parameter] public EventCallback<GridRowMovingEventArgs<TItem>> OnRowMoving { get; set; }
+    [Parameter] public EventCallback<GridRowMovingEventArgs<TItem>> OnRowMoved { get; set; }
+
+    // --- Events (master-detail expansion / tree) ----------------------------
+    [Parameter] public EventCallback<GridRowExpansionEventArgs<TItem>> OnRowExpanding { get; set; }
+    [Parameter] public EventCallback<GridRowExpansionEventArgs<TItem>> OnRowExpanded { get; set; }
+    [Parameter] public EventCallback<GridTreeRowExpansionEventArgs<TItem>> OnTreeRowExpanding { get; set; }
+    [Parameter] public EventCallback<GridTreeRowExpansionEventArgs<TItem>> OnTreeRowExpanded { get; set; }
 
     private async Task<IJSObjectReference> GetModuleAsync()
         => _module ??= await JSRuntime.InvokeAsync<IJSObjectReference>(
@@ -90,6 +135,12 @@
         sortConfiguration = SortConfiguration,
         pagination = Pagination,
         selection = Selection,
+        editing = Editing,
+        rowPinning = RowPinning,
+        rowReordering = RowReordering,
+        columnReordering = ColumnReordering,
+        tree = Tree,
+        expansion = Expansion,
     });
     private string DataHash() => (Data?.GetHashCode() ?? 0).ToString() + ":" + (Data?.Count() ?? 0);
 
@@ -180,6 +231,175 @@
     public async Task<bool> ClearSelectionAsync()
         => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("clearSelection", _elementId);
 
+    // --- Column operations ---------------------------------------------------
+
+    /// <summary>Pins a column to the start or end edge.</summary>
+    public async Task<bool> PinColumnAsync(string key, PinPosition position)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>(
+            "pinColumn", _elementId, key, position == PinPosition.Start ? "start" : "end");
+
+    /// <summary>Unpins a column.</summary>
+    public async Task<bool> UnpinColumnAsync(string key)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("unpinColumn", _elementId, key);
+
+    /// <summary>Moves a column before or after another column (same pinning group only).</summary>
+    public async Task<bool> MoveColumnAsync(string fromKey, string toKey, string position = "before")
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>(
+            "moveColumn", _elementId, fromKey, toKey, position);
+
+    /// <summary>Replaces the given column configuration(s) so cells/headers re-render.</summary>
+    public async Task UpdateColumnsAsync(params GridColumn<TItem>[] columns)
+    {
+        if (!_initialized) return;
+        var m = await GetModuleAsync();
+        await m.InvokeVoidAsync("updateColumns", _elementId, GridSerializer.Serialize(columns));
+    }
+
+    // --- Editing -------------------------------------------------------------
+
+    /// <summary>Begins editing the cell at the view-relative row index and column key.</summary>
+    public async Task<bool> EditCellAsync(int rowIndex, string columnKey)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("editCell", _elementId, rowIndex, columnKey);
+
+    /// <summary>Begins editing the whole row (row edit mode only).</summary>
+    public async Task<bool> EditRowAsync(int rowIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("editRow", _elementId, rowIndex);
+
+    /// <summary>Commits the current edit.</summary>
+    public async Task<bool> CommitEditAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("commitEdit", _elementId);
+
+    /// <summary>Discards the current edit without writing back.</summary>
+    public async Task CancelEditAsync()
+    {
+        if (!_initialized) return;
+        await (await GetModuleAsync()).InvokeVoidAsync("cancelEdit", _elementId);
+    }
+
+    /// <summary>Reverts the most recent edit (requires editing history enabled).</summary>
+    public async Task UndoAsync()
+    {
+        if (!_initialized) return;
+        await (await GetModuleAsync()).InvokeVoidAsync("undo", _elementId);
+    }
+
+    /// <summary>Re-applies the most recently undone edit.</summary>
+    public async Task RedoAsync()
+    {
+        if (!_initialized) return;
+        await (await GetModuleAsync()).InvokeVoidAsync("redo", _elementId);
+    }
+
+    /// <summary>Clears the undo/redo stacks.</summary>
+    public async Task ClearHistoryAsync()
+    {
+        if (!_initialized) return;
+        await (await GetModuleAsync()).InvokeVoidAsync("clearHistory", _elementId);
+    }
+
+    /// <summary>Whether there is a recorded edit to undo.</summary>
+    public async Task<bool> CanUndoAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("canUndo", _elementId);
+
+    /// <summary>Whether there is a previously-undone edit to redo.</summary>
+    public async Task<bool> CanRedoAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("canRedo", _elementId);
+
+    // --- State persistence ---------------------------------------------------
+
+    /// <summary>Returns a JSON-safe snapshot of the grid's restorable state (save this to persist a view).</summary>
+    public async Task<JsonElement> GetStateAsync()
+        => _initialized
+            ? await (await GetModuleAsync()).InvokeAsync<JsonElement>("getState", _elementId)
+            : default;
+
+    /// <summary>Applies a (partial) state snapshot produced by <see cref="GetStateAsync"/>.</summary>
+    public async Task SetStateAsync(object state)
+    {
+        if (!_initialized) return;
+        var m = await GetModuleAsync();
+        await m.InvokeVoidAsync("setState", _elementId, GridSerializer.Serialize(state));
+    }
+
+    /// <summary>Returns a machine-readable description of the grid (columns, operations, current state).</summary>
+    public async Task<JsonElement> GetSchemaAsync()
+        => _initialized
+            ? await (await GetModuleAsync()).InvokeAsync<JsonElement>("getSchema", _elementId)
+            : default;
+
+    // --- Row pinning / reordering --------------------------------------------
+
+    /// <summary>Pins the row at the given <see cref="Data"/> index to a sticky band (requires row pinning enabled).</summary>
+    public async Task<bool> PinRowAsync(int dataIndex, RowPinPosition position = RowPinPosition.Top)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>(
+            "pinRow", _elementId, dataIndex, position == RowPinPosition.Top ? "top" : "bottom");
+
+    /// <summary>Unpins the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> UnpinRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("unpinRow", _elementId, dataIndex);
+
+    /// <summary>Gets the currently pinned rows per band.</summary>
+    public async Task<GridPinnedRows<TItem>> GetPinnedRowsAsync()
+        => _initialized
+            ? await (await GetModuleAsync()).InvokeAsync<GridPinnedRows<TItem>>("getPinnedRows", _elementId)
+            : new();
+
+    /// <summary>Moves the row at view index <paramref name="from"/> before/after the row at view index <paramref name="to"/>.</summary>
+    public async Task<bool> MoveRowAsync(int from, int to, string position = "before")
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("moveRow", _elementId, from, to, position);
+
+    // --- Master-detail expansion (rows identified by Data index) -------------
+
+    /// <summary>Expands the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> ExpandRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandRow", _elementId, dataIndex);
+
+    /// <summary>Collapses the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> CollapseRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseRow", _elementId, dataIndex);
+
+    /// <summary>Toggles the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> ToggleRowExpansionAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("toggleRowExpansion", _elementId, dataIndex);
+
+    /// <summary>Expands every expandable row.</summary>
+    public async Task<bool> ExpandAllRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandAllRows", _elementId);
+
+    /// <summary>Collapses every expanded row.</summary>
+    public async Task<bool> CollapseAllRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseAllRows", _elementId);
+
+    /// <summary>Whether the row at the given <see cref="Data"/> index is expanded.</summary>
+    public async Task<bool> IsRowExpandedAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("isRowExpanded", _elementId, dataIndex);
+
+    // --- Tree data (rows identified by Data index) --------------------------
+
+    /// <summary>Toggles tree-expansion of the row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> ToggleTreeRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("toggleTreeRow", _elementId, dataIndex);
+
+    /// <summary>Expands the tree row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> ExpandTreeRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandTreeRow", _elementId, dataIndex);
+
+    /// <summary>Collapses the tree row at the given <see cref="Data"/> index.</summary>
+    public async Task<bool> CollapseTreeRowAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseTreeRow", _elementId, dataIndex);
+
+    /// <summary>Expands every parent row in the tree.</summary>
+    public async Task<bool> ExpandAllTreeRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandAllTreeRows", _elementId);
+
+    /// <summary>Collapses every expanded tree row.</summary>
+    public async Task<bool> CollapseAllTreeRowsAsync()
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseAllTreeRows", _elementId);
+
+    /// <summary>Whether the tree row at the given <see cref="Data"/> index is expanded.</summary>
+    public async Task<bool> IsTreeRowExpandedAsync(int dataIndex)
+        => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("isTreeRowExpanded", _elementId, dataIndex);
+
     // --- JS -> .NET event bridge --------------------------------------------
     [JSInvokable] public Task HandleSorting(GridSortEventArgs a) => Invoke(OnSorting, a);
     [JSInvokable] public Task HandleSorted(GridSortEventArgs a) => Invoke(OnSorted, a);
@@ -192,6 +412,24 @@
     [JSInvokable] public Task HandleRowSelecting(GridRowSelectingEventArgs<TItem> a) => Invoke(OnRowSelecting, a);
     [JSInvokable] public Task HandleRowSelected(GridRowSelectedEventArgs<TItem> a) => Invoke(OnRowSelected, a);
     [JSInvokable] public Task HandleStateChanged(GridStateChangedEventArgs a) => Invoke(OnStateChanged, a);
+    [JSInvokable] public Task HandleColumnPinning(GridColumnPinningEventArgs a) => Invoke(OnColumnPinning, a);
+    [JSInvokable] public Task HandleColumnPinned(GridColumnPinnedEventArgs a) => Invoke(OnColumnPinned, a);
+    [JSInvokable] public Task HandleColumnMoving(GridColumnMovingEventArgs a) => Invoke(OnColumnMoving, a);
+    [JSInvokable] public Task HandleColumnMoved(GridColumnMovedEventArgs a) => Invoke(OnColumnMoved, a);
+    [JSInvokable] public Task HandleCellValueChanging(GridCellValueChangingEventArgs<TItem> a) => Invoke(OnCellValueChanging, a);
+    [JSInvokable] public Task HandleCellValueChanged(GridCellValueChangedEventArgs<TItem> a) => Invoke(OnCellValueChanged, a);
+    [JSInvokable] public Task HandleCellValidationFailed(GridCellValidationFailedEventArgs<TItem> a) => Invoke(OnCellValidationFailed, a);
+    [JSInvokable] public Task HandleHistoryChanged(GridHistoryChangedEventArgs a) => Invoke(OnHistoryChanged, a);
+    [JSInvokable] public Task HandleRowEditStarted(GridRowEditStartedEventArgs a) => Invoke(OnRowEditStarted, a);
+    [JSInvokable] public Task HandleRowEditEnded(GridRowEditEndedEventArgs a) => Invoke(OnRowEditEnded, a);
+    [JSInvokable] public Task HandleRowPinning(GridRowPinningEventArgs<TItem> a) => Invoke(OnRowPinning, a);
+    [JSInvokable] public Task HandleRowPinned(GridRowPinningEventArgs<TItem> a) => Invoke(OnRowPinned, a);
+    [JSInvokable] public Task HandleRowMoving(GridRowMovingEventArgs<TItem> a) => Invoke(OnRowMoving, a);
+    [JSInvokable] public Task HandleRowMoved(GridRowMovingEventArgs<TItem> a) => Invoke(OnRowMoved, a);
+    [JSInvokable] public Task HandleRowExpanding(GridRowExpansionEventArgs<TItem> a) => Invoke(OnRowExpanding, a);
+    [JSInvokable] public Task HandleRowExpanded(GridRowExpansionEventArgs<TItem> a) => Invoke(OnRowExpanded, a);
+    [JSInvokable] public Task HandleTreeRowExpanding(GridTreeRowExpansionEventArgs<TItem> a) => Invoke(OnTreeRowExpanding, a);
+    [JSInvokable] public Task HandleTreeRowExpanded(GridTreeRowExpansionEventArgs<TItem> a) => Invoke(OnTreeRowExpanded, a);
 
     private static Task Invoke<T>(EventCallback<T> callback, T args)
         => callback.HasDelegate ? callback.InvokeAsync(args) : Task.CompletedTask;

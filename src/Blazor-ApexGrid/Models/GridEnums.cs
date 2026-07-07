@@ -29,3 +29,24 @@ public enum PinPosition
     Start,
     End
 }
+
+/// <summary>Inline-editing granularity: commit each cell independently, or the whole row as a batch.</summary>
+public enum EditMode
+{
+    Cell,
+    Row
+}
+
+/// <summary>The interaction that opens a cell editor.</summary>
+public enum EditTrigger
+{
+    Click,
+    DoubleClick
+}
+
+/// <summary>Which sticky band a row is pinned to.</summary>
+public enum RowPinPosition
+{
+    Top,
+    Bottom
+}

@@ -45,6 +45,9 @@ public class GridColumn<TItem>
     /// <summary>Enable filtering on this column (true for defaults, or a filter config object).</summary>
     public bool? Filter { get; set; }
 
+    /// <summary>Allow inline editing of this column's cells (requires grid editing to be enabled).</summary>
+    public bool? Editable { get; set; }
+
     /// <summary>
     /// Escape hatch for column options not modeled above (including function-typed renderers/templates
     /// supplied as JS function strings). Keys must be the exact names the core expects.

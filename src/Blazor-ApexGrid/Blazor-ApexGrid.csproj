@@ -17,12 +17,13 @@
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/apexcharts/Blazor-ApexGrid</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
 
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
     <PackageReleaseNotes>
-      0.1.0 Initial preview. Bundles apex-grid 3.3.0 (with dependencies) as a self-contained ES module. Renders a typed ApexGrid&lt;TItem&gt; from Data and Columns; supports quick filter. Data-pipeline features (sort/filter/paging/selection/editing) and events are being added incrementally.
+      1.0.0 First stable release. Bundles apex-grid 3.3.0 (with dependencies) as a self-contained ES module. Typed ApexGrid&lt;TItem&gt; with sorting, filtering, quick filter, pagination, and selection; inline editing with undo/redo; column pin/reorder/resize; row pinning and reordering; tree data and master-detail expansion; JSON state persistence (getState/setState/getSchema); and strongly-typed callbacks for all 27 grid events.
     </PackageReleaseNotes>
   </PropertyGroup>
 
@@ -42,6 +43,7 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>

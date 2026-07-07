@@ -96,9 +96,50 @@ if (await filterInput.count()) {
   console.log(`[quick-filter] rows -> ${filtered}`);
 }
 
+// Column pinning: the button calls C# PinColumnAsync -> element.pinColumn('name', 'start').
+// The resulting columnPinned event round-trips back to C# and is appended to the log,
+// proving both directions of the bridge for a column operation.
+await page.getByRole("button", { name: "Pin Name column", exact: true }).click();
+await page.waitForTimeout(600);
+if (!/columnPinned/i.test(await logText())) failures.push("columnPinned event did not round-trip to C#");
+console.log(`[column-pin] columnPinned round-tripped`);
+
+// State persistence: "Save state" calls C# GetStateAsync -> element.getState(), and the
+// returned JSON snapshot is marshaled back into C# (proving a data-returning method call).
+await page.getByRole("button", { name: "Save state", exact: true }).click();
+await page.waitForTimeout(400);
+const stateLen = parseInt(await page.locator("#state-len").innerText(), 10) || 0;
+if (!(stateLen > 0)) failures.push(`getState returned no snapshot (len ${stateLen})`);
+console.log(`[state] snapshot length=${stateLen}`);
+
 // No new console/page errors should have appeared during the interactions.
 const newErrors = pageErrors.slice(errCountBefore);
 if (newErrors.length) failures.push(`errors during interactions: ${JSON.stringify(newErrors)}`);
+
+// --- Tree data + master-detail page -----------------------------------------
+// Both features rely on interop that supplies a callback to the web component: tree builds
+// getDataPath from a row field, and master-detail builds a detailTemplate that returns a DOM
+// node from an HTML string. Verify both grids render and the detail expansion round-trips.
+const treeErrBefore = pageErrors.length;
+await page.goto(BASE + "/tree", { waitUntil: "domcontentloaded" });
+await page.waitForSelector("apex-grid", { timeout: 90000 }).catch(() => {});
+await page.waitForTimeout(2500);
+
+const grids = await page.evaluate(() => document.querySelectorAll("apex-grid").length);
+const treeRows = await countTagDeep("apex-grid-row");
+if (grids !== 2) failures.push(`expected 2 grids on /tree (got ${grids})`);
+if (treeRows === 0) failures.push("tree/detail page rendered no rows");
+console.log(`[tree-page] grids=${grids} rows=${treeRows}`);
+
+// Master-detail: "Expand all" -> element.expandAllRows(); rowExpanded round-trips to C#.
+await page.getByRole("button", { name: "Expand all", exact: true }).nth(1).click();
+await page.waitForTimeout(700);
+if (!/rowExpanded/i.test(await page.locator("#event-log").innerText()))
+  failures.push("rowExpanded event did not round-trip to C# (master-detail)");
+else console.log(`[master-detail] rowExpanded round-tripped`);
+
+const treeErrors = pageErrors.slice(treeErrBefore);
+if (treeErrors.length) failures.push(`errors on /tree: ${JSON.stringify(treeErrors)}`);
 
 await browser.close();
 
@@ -106,4 +147,7 @@ if (failures.length) {
   console.error("\nE2E SMOKE FAILED:\n" + failures.map((f) => "  - " + f).join("\n"));
   process.exit(1);
 }
-console.log("\nE2E smoke passed: grid registered, rendered rows, and quick filter round-tripped.");
+console.log(
+  "\nE2E smoke passed: grid registered and rendered; selection, quick filter, column pinning, " +
+    "and getState all round-tripped across the C# <-> element bridge."
+);
