@@ -12,18 +12,18 @@
     <Authors>ApexCharts</Authors>
     <Company>ApexCharts</Company>
     <Copyright>Copyright 2026 ApexCharts</Copyright>
-    <PackageTags>blazor;grid;datagrid;apex-grid;table;webassembly</PackageTags>
+    <PackageTags>blazor;grid;datagrid;apex-grid;table;webassembly;server;blazor-server</PackageTags>
     <RepositoryUrl>https://github.com/apexcharts/Blazor-ApexGrid</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageProjectUrl>https://github.com/apexcharts/Blazor-ApexGrid</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.1</Version>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
     <PackageReleaseNotes>
-      1.0.0 First stable release. Bundles apex-grid 3.3.0 (with dependencies) as a self-contained ES module. Typed ApexGrid&lt;TItem&gt; with sorting, filtering, quick filter, pagination, and selection; inline editing with undo/redo; column pin/reorder/resize; row pinning and reordering; tree data and master-detail expansion; JSON state persistence (getState/setState/getSchema); and strongly-typed callbacks for all 27 grid events.
+      1.0.1 Packaging and documentation fixes, no code changes. The package ships the licence as LICENSE.md, and the README describes the Community License on its current terms. Row expansion is documented as "row detail" so it is not mistaken for nested master/detail grids. Blazor Server is listed in the package tags, as it is supported. Bundles apex-grid 3.3.0 with strongly-typed callbacks for all 29 grid events.
     </PackageReleaseNotes>
   </PropertyGroup>
 
@@ -43,7 +43,7 @@
 
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="" />
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
+    <None Include="..\..\LICENSE.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
 </Project>

@@ -11,7 +11,7 @@ or npm build step is required in your app.
 - **Inline editing**: cell or row mode, with undo/redo history.
 - **Column operations**: pin, reorder, resize, show/hide.
 - **Rows**: pinning to sticky bands and drag/keyboard reordering.
-- **Tree data** and **master-detail** expansion.
+- **Tree data** and **row detail** expansion.
 - **State persistence**: capture and restore a JSON snapshot of the whole view.
 - Multi-targets **net8.0**, **net9.0**, and **net10.0**.
 
@@ -71,6 +71,18 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
 
 > Column `Key` values bind to your row properties by their serialized (camelCase) name, so a
 > `Name` property is referenced as `"name"`.
+
+### Good to know
+
+- **Editing a row in place needs `RefreshAsync()`.** The grid redraws when `Data` is reassigned
+  or its row count changes. Changing a property on a row already in the list does neither, so
+  call `await grid.RefreshAsync()` to show the edit.
+- **Give the grid a bounded height.** `Height` defaults to `400px`. A percentage only works if
+  the parent has a height of its own; otherwise it resolves to zero and the grid renders as
+  nothing.
+- **Cell and header templates are JavaScript function strings**, passed through
+  `AdditionalConfig`, not Razor `RenderFragment`s, so a template cannot contain Blazor
+  components.
 
 ## Columns
 
@@ -137,10 +149,11 @@ callbacks required.
           Tree="new() { Enabled = true, PathKey = &quot;path&quot;, DefaultExpanded = true }" />
 ```
 
-### Master-detail
+### Row detail
 
-The detail panel is rendered from an HTML template whose `{field}` tokens are replaced with
-the row's (HTML-escaped) values.
+Expanding a row opens a detail panel beneath it, rendered from an HTML template whose
+`{field}` tokens are replaced with the row's (HTML-escaped) values. The panel holds HTML, not a
+nested grid.
 
 ```razor
 <ApexGrid TItem="Product" Data="products" Columns="columns" Expansion="expansion" />
@@ -187,15 +200,17 @@ and expose selected/affected rows as your `TItem`.
 
 ## Live demo
 
-A running sample (data grid, plus tree and master-detail) is deployed at
+A running sample (data grid, plus tree and row detail) is deployed at
 <https://apexcharts.github.io/Blazor-ApexGrid/>. Source is under
 [`src/Blazor-ApexGrid.Sample`](src/Blazor-ApexGrid.Sample).
 
 ## License
 
 This wrapper bundles [apex-grid](https://www.npmjs.com/package/apex-grid), which is offered
-under the ApexCharts dual-license model (a free community license for individuals and small
-organizations, and a paid commercial license above a revenue threshold). See
-[LICENSE](LICENSE) for the full terms.
+under the ApexCharts dual-license model: a Community License at no cost for individuals,
+non-profits, educators and organizations under $2M USD in annual revenue, operating budget or
+funding, and a paid Commercial or OEM license at or above that. Embedding the grid in a product
+or platform used by other people needs the OEM License whatever your size. See
+[LICENSE.md](LICENSE.md) for the full terms.
 
 Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v3.3.0.

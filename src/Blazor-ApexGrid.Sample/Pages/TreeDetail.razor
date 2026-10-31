@@ -1,8 +1,8 @@
 @page "/tree"
 
-<PageTitle>ApexGrid tree &amp; master-detail</PageTitle>
+<PageTitle>ApexGrid tree &amp; row detail</PageTitle>
 
-<h1>Tree data &amp; master-detail</h1>
+<h1>Tree data &amp; row detail</h1>
 
 <h2>Tree data</h2>
 <p>Hierarchy is derived from each row's <code>path</code> field (a string array). No callbacks required.</p>
@@ -19,7 +19,7 @@
           Tree="_treeConfig"
           OnTreeRowExpanded="OnTreeExpanded" />
 
-<h2 style="margin-top:2rem;">Master-detail</h2>
+<h2 style="margin-top:2rem;">Row detail</h2>
 <p>Double-click a row's chevron to reveal a detail panel rendered from an HTML template whose <code>{field}</code> tokens are filled from the row.</p>
 
 <div style="display:flex; gap:8px; margin:0 0 0.75rem;">

@@ -116,15 +116,15 @@ console.log(`[state] snapshot length=${stateLen}`);
 const newErrors = pageErrors.slice(errCountBefore);
 if (newErrors.length) failures.push(`errors during interactions: ${JSON.stringify(newErrors)}`);
 
-// --- Tree data + master-detail page -----------------------------------------
+// --- Tree data + row detail page -----------------------------------------
 // Both features rely on interop that supplies a callback to the web component: tree builds
-// getDataPath from a row field, and master-detail builds a detailTemplate that returns a DOM
+// getDataPath from a row field, and row detail builds a detailTemplate that returns a DOM
 // node from an HTML string. Verify both grids render and the detail expansion round-trips.
 // Navigate via the in-app nav link (client-side routing) rather than a fresh page load.
 // This mirrors real usage and avoids the benign HTTP 404 that GitHub Pages returns for a
 // deep link to a SPA route (it serves the 404.html host page; the app still boots and routes).
 const treeErrBefore = pageErrors.length;
-await page.getByRole("link", { name: "Tree & master-detail" }).click();
+await page.getByRole("link", { name: "Tree & row detail" }).click();
 await page.waitForSelector("apex-grid", { timeout: 90000 }).catch(() => {});
 await page.waitForTimeout(2500);
 
@@ -134,12 +134,12 @@ if (grids !== 2) failures.push(`expected 2 grids on /tree (got ${grids})`);
 if (treeRows === 0) failures.push("tree/detail page rendered no rows");
 console.log(`[tree-page] grids=${grids} rows=${treeRows}`);
 
-// Master-detail: "Expand all" -> element.expandAllRows(); rowExpanded round-trips to C#.
+// Row detail: "Expand all" -> element.expandAllRows(); rowExpanded round-trips to C#.
 await page.getByRole("button", { name: "Expand all", exact: true }).nth(1).click();
 await page.waitForTimeout(700);
 if (!/rowExpanded/i.test(await page.locator("#event-log").innerText()))
-  failures.push("rowExpanded event did not round-trip to C# (master-detail)");
-else console.log(`[master-detail] rowExpanded round-tripped`);
+  failures.push("rowExpanded event did not round-trip to C# (row detail)");
+else console.log(`[row-detail] rowExpanded round-tripped`);
 
 const treeErrors = pageErrors.slice(treeErrBefore);
 if (treeErrors.length) failures.push(`errors on /tree: ${JSON.stringify(treeErrors)}`);
