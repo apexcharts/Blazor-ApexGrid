@@ -64,6 +64,15 @@ worth doing on its own merits.
 
 ### Seam to add when bumping the core
 
+**Done in 1.1.0.** The core is bundled at 3.6.0, and `ApexGrid<TItem>` has two
+protected virtual members: `ElementTagName` (the element it renders and waits
+for, passed to `init` as `tagName`) and `ModulePath` (the interop module to
+import). An enterprise component overrides both and points `ModulePath` at a
+bridge that re-exports this one's functions after importing its own bundle.
+`SerializeConfig` is still private and `init` only applies the keys it knows,
+so passing enterprise config is the first thing the enterprise package adds.
+The original note follows.
+
 The element tag is hardcoded in two places:
 
 - the `<apex-grid>` markup in `src/Blazor-ApexGrid/Components/ApexGrid.razor`

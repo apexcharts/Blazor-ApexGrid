@@ -196,6 +196,24 @@ public class GridRowEditEndedEventArgs
     public bool Committed { get; set; }
 }
 
+/// <summary>
+/// Tally returned by <c>ApplyEditsAsync</c>. Each edit lands in exactly one bucket, so "nothing
+/// changed" and "everything was rejected" can be told apart.
+/// </summary>
+public class GridApplyEditsResult
+{
+    /// <summary>Edits written to their row.</summary>
+    public int Applied { get; set; }
+    /// <summary>Edits whose value equalled the current one.</summary>
+    public int Unchanged { get; set; }
+    /// <summary>Edits rejected by a column validator.</summary>
+    public int Invalid { get; set; }
+    /// <summary>Edits cancelled by a <c>cellValueChanging</c> listener in JavaScript.</summary>
+    public int Cancelled { get; set; }
+    /// <summary>Edits naming a row index outside the data, or a column that is not editable.</summary>
+    public int Skipped { get; set; }
+}
+
 // --- Row pinning / reordering ------------------------------------------------
 
 /// <summary>Fired before (rowPinning) and after (rowPinned) a row's pin state changes.</summary>
@@ -215,6 +233,10 @@ public class GridRowMovingEventArgs<TItem>
     public int From { get; set; }
     /// <summary>The target row's view index.</summary>
     public int To { get; set; }
+    /// <summary>Whether the row lands "before" or "after" the target row.</summary>
+    public string? Position { get; set; }
+    /// <summary>The view index the moved row lands at.</summary>
+    public int ToIndex { get; set; }
     public TItem? Data { get; set; }
 }
 
@@ -228,7 +250,7 @@ public class GridPinnedRows<TItem>
 
 // --- Row expansion / tree ----------------------------------------------------
 
-/// <summary>Fired before (rowExpanding) and after (rowExpanded) the master-detail expansion set changes.</summary>
+/// <summary>Fired before (rowExpanding) and after (rowExpanded) the row detail expansion set changes.</summary>
 /// <typeparam name="TItem">The row data type.</typeparam>
 public class GridRowExpansionEventArgs<TItem>
 {

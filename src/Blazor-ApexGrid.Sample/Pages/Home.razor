@@ -23,6 +23,7 @@
     <button @onclick="() => _grid!.RedoAsync()" disabled="@(!_canRedo)">Redo</button>
     <button id="save-state" @onclick="SaveState">Save state</button>
     <button @onclick="RestoreState" disabled="@(_savedState is null)">Restore state</button>
+    <button @onclick="AgeEveryone">Everyone +1 year</button>
     <span>State: <strong id="state-len">@(_savedState?.GetRawText().Length ?? 0)</strong> chars</span>
 </div>
 
@@ -32,6 +33,7 @@
           Data="_people"
           Columns="_columns"
           Height="360px"
+          RowIdKey="name"
           SortConfiguration="_sort"
           Pagination="_pagination"
           Selection="_selection"
@@ -124,6 +126,15 @@
             await _grid.SetStateAsync(_savedState.Value);
             Log("restored state");
         }
+    }
+
+    // One batch across every row, including those on other pages: one undo step, one re-render.
+    private async Task AgeEveryone()
+    {
+        if (_grid is null) return;
+        var edits = _people.Select((p, i) => new GridCellEdit { DataIndex = i, Column = "age", Value = p.Age + 1 });
+        var result = await _grid.ApplyEditsAsync(edits);
+        Log($"applyEdits: applied={result.Applied} skipped={result.Skipped}");
     }
 
     private void OnSorted(GridSortEventArgs e) => Log($"sorted: {e.Key} {e.Direction}");

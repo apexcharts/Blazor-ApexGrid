@@ -9,9 +9,10 @@
 @inject IJSRuntime JSRuntime
 
 @* Do not set `display` on <apex-grid>: it declares :host{display:grid} internally and any display
-   override collapses it. The wrapper provides the bounded height the virtualizer needs. *@
+   override collapses it. The wrapper provides the bounded height the virtualizer needs.
+   The element is built in code so a derived component can render another tag (ElementTagName). *@
 <div style="height:@Height; @Style" class="@Class">
-    <apex-grid id="@_elementId"></apex-grid>
+    @RenderGridElement
 </div>
 
 @code {
@@ -20,6 +21,25 @@
     private DotNetObjectReference<ApexGrid<TItem>>? _dotNetRef;
     private bool _initialized;
     private string? _lastDataHash;
+
+    /// <summary>
+    /// The custom element this component renders and waits for. Override it in a component that
+    /// renders an element extending <c>&lt;apex-grid&gt;</c>.
+    /// </summary>
+    protected virtual string ElementTagName => "apex-grid";
+
+    /// <summary>
+    /// The interop module to import. It must export the same functions as the default module. Override
+    /// it in a component that ships its own bundle.
+    /// </summary>
+    protected virtual string ModulePath => "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=3.6.0";
+
+    private void RenderGridElement(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+    {
+        builder.OpenElement(0, ElementTagName);
+        builder.AddAttribute(1, "id", _elementId);
+        builder.CloseElement();
+    }
 
     /// <summary>The rows to display.</summary>
     [Parameter] public IEnumerable<TItem>? Data { get; set; }
@@ -51,8 +71,17 @@
     /// <summary>Tree-data (nested rows) configuration.</summary>
     [Parameter] public GridTreeConfiguration? Tree { get; set; }
 
-    /// <summary>Master-detail row-expansion configuration.</summary>
+    /// <summary>Row detail expansion configuration.</summary>
     [Parameter] public GridExpansionConfiguration? Expansion { get; set; }
+
+    /// <summary>
+    /// The row field (serialized/camelCase name) holding a unique, stable id, such as <c>"id"</c>.
+    /// Every change to <see cref="Data"/> reaches the grid as new objects, so without this the grid
+    /// cannot tell a reloaded row from a new one. Set it to keep row pins and a manual row order
+    /// across data changes, and to have <see cref="GetStateAsync"/> capture selected and expanded
+    /// rows by id rather than by position.
+    /// </summary>
+    [Parameter] public string? RowIdKey { get; set; }
 
     /// <summary>Height of the grid (CSS value). The grid needs a bounded height for row virtualization.</summary>
     [Parameter] public string Height { get; set; } = "400px";
@@ -96,15 +125,14 @@
     [Parameter] public EventCallback<GridRowMovingEventArgs<TItem>> OnRowMoving { get; set; }
     [Parameter] public EventCallback<GridRowMovingEventArgs<TItem>> OnRowMoved { get; set; }
 
-    // --- Events (master-detail expansion / tree) ----------------------------
+    // --- Events (row detail expansion / tree) -------------------------------
     [Parameter] public EventCallback<GridRowExpansionEventArgs<TItem>> OnRowExpanding { get; set; }
     [Parameter] public EventCallback<GridRowExpansionEventArgs<TItem>> OnRowExpanded { get; set; }
     [Parameter] public EventCallback<GridTreeRowExpansionEventArgs<TItem>> OnTreeRowExpanding { get; set; }
     [Parameter] public EventCallback<GridTreeRowExpansionEventArgs<TItem>> OnTreeRowExpanded { get; set; }
 
     private async Task<IJSObjectReference> GetModuleAsync()
-        => _module ??= await JSRuntime.InvokeAsync<IJSObjectReference>(
-            "import", "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=3.3.0");
+        => _module ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", ModulePath);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -114,7 +142,7 @@
             _dotNetRef = DotNetObjectReference.Create(this);
             _lastDataHash = DataHash();
             _initialized = await module.InvokeAsync<bool>(
-                "init", _elementId, SerializeData(), SerializeColumns(), SerializeConfig(), _dotNetRef);
+                "init", _elementId, SerializeData(), SerializeColumns(), SerializeConfig(), _dotNetRef, ElementTagName);
         }
         else if (_initialized)
         {
@@ -139,6 +167,7 @@
         rowPinning = RowPinning,
         rowReordering = RowReordering,
         columnReordering = ColumnReordering,
+        rowIdKey = RowIdKey,
         tree = Tree,
         expansion = Expansion,
     });
@@ -297,6 +326,19 @@
         await (await GetModuleAsync()).InvokeVoidAsync("clearHistory", _elementId);
     }
 
+    /// <summary>
+    /// Writes a batch of cell values. Each write runs the column's validators and raises
+    /// <see cref="OnCellValueChanging"/> and <see cref="OnCellValueChanged"/>, and the batch lands as
+    /// one undo step and one re-render. Edits to an out-of-range row or a non-editable column are
+    /// skipped rather than thrown on. Like inline edits, the writes change the grid's rows, not
+    /// <see cref="Data"/>.
+    /// </summary>
+    public async Task<GridApplyEditsResult> ApplyEditsAsync(IEnumerable<GridCellEdit> edits)
+        => _initialized
+            ? await (await GetModuleAsync()).InvokeAsync<GridApplyEditsResult>(
+                "applyEdits", _elementId, GridSerializer.Serialize(edits))
+            : new();
+
     /// <summary>Whether there is a recorded edit to undo.</summary>
     public async Task<bool> CanUndoAsync()
         => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("canUndo", _elementId);
@@ -348,17 +390,17 @@
     public async Task<bool> MoveRowAsync(int from, int to, string position = "before")
         => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("moveRow", _elementId, from, to, position);
 
-    // --- Master-detail expansion (rows identified by Data index) -------------
+    // --- Row detail expansion (rows identified by Data index) ----------------
 
-    /// <summary>Expands the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    /// <summary>Expands the detail panel for the row at the given <see cref="Data"/> index.</summary>
     public async Task<bool> ExpandRowAsync(int dataIndex)
         => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("expandRow", _elementId, dataIndex);
 
-    /// <summary>Collapses the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    /// <summary>Collapses the detail panel for the row at the given <see cref="Data"/> index.</summary>
     public async Task<bool> CollapseRowAsync(int dataIndex)
         => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("collapseRow", _elementId, dataIndex);
 
-    /// <summary>Toggles the master-detail panel for the row at the given <see cref="Data"/> index.</summary>
+    /// <summary>Toggles the detail panel for the row at the given <see cref="Data"/> index.</summary>
     public async Task<bool> ToggleRowExpansionAsync(int dataIndex)
         => _initialized && await (await GetModuleAsync()).InvokeAsync<bool>("toggleRowExpansion", _elementId, dataIndex);
 

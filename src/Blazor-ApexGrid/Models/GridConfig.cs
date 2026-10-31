@@ -120,7 +120,7 @@ public class GridTreeConfiguration
 }
 
 /// <summary>
-/// Master-detail row-expansion configuration. The detail panel is rendered from
+/// Row detail expansion configuration. The detail panel is rendered from
 /// <see cref="DetailTemplateHtml"/>, an HTML string whose <c>{field}</c> tokens are replaced with
 /// the row's (HTML-escaped) values.
 /// </summary>
@@ -137,6 +137,13 @@ public class GridExpansionConfiguration
 
     /// <summary>Render the built-in chevron toggle column. Defaults to true.</summary>
     public bool? ShowToggleColumn { get; set; }
+
+    /// <summary>
+    /// <c>part</c> names used inside <see cref="DetailTemplateHtml"/> to re-export, so
+    /// <c>apex-grid::part(name)</c> in your CSS can style them. The panel itself is always
+    /// reachable as <c>detail-panel</c>.
+    /// </summary>
+    public List<string>? ExportParts { get; set; }
 }
 
 /// <summary>Row-selection configuration.</summary>
@@ -173,7 +180,8 @@ public class GridFilterExpression
 
     /// <summary>
     /// Operand name for the column's data type, e.g. "contains"/"startsWith"/"equals" (string),
-    /// "greaterThan"/"lessThan"/"equals" (number), "all"/"true"/"false" (boolean).
+    /// "greaterThan"/"lessThan"/"equals" (number, currency, rating and progress columns),
+    /// "all"/"true"/"false" (boolean).
     /// </summary>
     public string Condition { get; set; } = string.Empty;
 
@@ -185,4 +193,20 @@ public class GridFilterExpression
 
     /// <summary>Match case for string comparisons.</summary>
     public bool? CaseSensitive { get; set; }
+}
+
+/// <summary>One cell write passed to <c>ApplyEditsAsync</c>.</summary>
+public class GridCellEdit
+{
+    /// <summary>
+    /// Index of the row in the grid's data, the same index the other row APIs take. It reaches rows
+    /// on other pages, pinned rows and rows under a collapsed tree parent.
+    /// </summary>
+    public int DataIndex { get; set; }
+
+    /// <summary>Column key to write (camelCase property name).</summary>
+    public string Column { get; set; } = string.Empty;
+
+    /// <summary>The new value.</summary>
+    public object? Value { get; set; }
 }

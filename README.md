@@ -77,6 +77,13 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
 - **Editing a row in place needs `RefreshAsync()`.** The grid redraws when `Data` is reassigned
   or its row count changes. Changing a property on a row already in the list does neither, so
   call `await grid.RefreshAsync()` to show the edit.
+- **Set `RowIdKey` when rows have an id.** Every change to `Data` reaches the grid as new
+  objects, so the grid cannot tell a reloaded row from a new one. `RowIdKey="id"` (the
+  camelCase field name) keeps row pins and a manual row order across data changes, and makes
+  `GetStateAsync` capture selected and expanded rows by id instead of by position.
+- **A data change clears undo history.** For the same reason, the grid treats every push of
+  `Data` (including `RefreshAsync()`) as new records and drops its undo and redo stacks, since
+  those edits were made to rows it no longer holds.
 - **Give the grid a bounded height.** `Height` defaults to `400px`. A percentage only works if
   the parent has a height of its own; otherwise it resolves to zero and the grid renders as
   nothing.
@@ -133,6 +140,16 @@ API: `EditCellAsync`, `EditRowAsync`, `CommitEditAsync`, `CancelEditAsync`, `Und
 `RedoAsync`, `ClearHistoryAsync`, `CanUndoAsync`, `CanRedoAsync`. Mark editable columns with
 `Editable = true`.
 
+`ApplyEditsAsync` writes a batch of cells by data index. Each write runs the column's
+validators and raises `OnCellValueChanging` / `OnCellValueChanged`, and the whole batch is one
+undo step and one re-render. It returns a `GridApplyEditsResult` that counts `Applied`,
+`Unchanged`, `Invalid`, `Cancelled` and `Skipped` separately.
+
+```csharp
+var edits = people.Select((p, i) => new GridCellEdit { DataIndex = i, Column = "age", Value = p.Age + 1 });
+var result = await grid.ApplyEditsAsync(edits);   // reaches rows on other pages too
+```
+
 ### Column and row operations
 
 `PinColumnAsync` / `UnpinColumnAsync` / `MoveColumnAsync` / `UpdateColumnsAsync`; set
@@ -166,6 +183,10 @@ nested grid.
     };
 }
 ```
+
+To style elements inside the template from your own CSS, give them a `part` attribute and
+list those names in `ExportParts`; then `apex-grid::part(name)` reaches them. The panel itself
+is always `apex-grid::part(detail-panel)`.
 
 Expansion/tree API: `ExpandRowAsync`, `CollapseRowAsync`, `ToggleRowExpansionAsync`,
 `ExpandAllRowsAsync`, `CollapseAllRowsAsync`, and the `...TreeRow...` equivalents.
@@ -213,4 +234,4 @@ funding, and a paid Commercial or OEM license at or above that. Embedding the gr
 or platform used by other people needs the OEM License whatever your size. See
 [LICENSE.md](LICENSE.md) for the full terms.
 
-Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v3.3.0.
+Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v3.6.0.

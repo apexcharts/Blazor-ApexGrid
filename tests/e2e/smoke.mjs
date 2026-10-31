@@ -66,6 +66,14 @@ if (rows === 0) failures.push("grid rendered no rows");
 if (pageErrors.length) failures.push(`console/page errors: ${JSON.stringify(pageErrors)}`);
 console.log(`[render] defined=${defined} rows=${rows} errUi=${errUi} errors=${pageErrors.length}`);
 
+// RowIdKey="name" reaches the element as a rowId resolver reading that field.
+const rowId = await page.evaluate(() => {
+  const el = document.querySelector("apex-grid");
+  return typeof el?.rowId === "function" ? el.rowId(el.data[0]) : null;
+});
+if (rowId !== "Ada Lovelace") failures.push(`RowIdKey did not set a rowId resolver (got ${rowId})`);
+console.log(`[row-id] rowId(data[0]) = ${rowId}`);
+
 const logText = () => page.locator("#event-log").innerText();
 const errCountBefore = pageErrors.length;
 
@@ -111,6 +119,16 @@ await page.waitForTimeout(400);
 const stateLen = parseInt(await page.locator("#state-len").innerText(), 10) || 0;
 if (!(stateLen > 0)) failures.push(`getState returned no snapshot (len ${stateLen})`);
 console.log(`[state] snapshot length=${stateLen}`);
+
+// Batch edits: "Everyone +1 year" calls C# ApplyEditsAsync with all 10 data indexes while the
+// grid shows one filtered row of a 5-row page, so applied=10 proves rows outside the view are
+// reached and the result tally is marshaled back into C#.
+await page.getByRole("button", { name: "Everyone +1 year", exact: true }).click();
+await page.waitForTimeout(600);
+const applied = /applyEdits: applied=(\d+)/.exec(await logText());
+if (!applied || applied[1] !== "10")
+  failures.push(`applyEdits did not apply to all 10 rows (${applied ? applied[0] : "no log entry"})`);
+else console.log(`[apply-edits] applied=10`);
 
 // No new console/page errors should have appeared during the interactions.
 const newErrors = pageErrors.slice(errCountBefore);

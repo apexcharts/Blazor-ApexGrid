@@ -2,8 +2,8 @@
 //
 // Importing the bundle runs apex-grid's setup(): it registers the <apex-grid> custom element (and
 // its sub-components) and adopts a default host stylesheet so the row virtualizer has a bounded
-// height. The bundle is fully self-contained (lit, igniteui, etc. are bundled in).
-import "./apex-grid.bundle.js?ver=3.3.0";
+// height. The bundle is fully self-contained (lit and its helpers are bundled in).
+import "./apex-grid.bundle.js?ver=3.6.0";
 
 // grid instances and their event-listener cleanups, keyed by element id
 const grids = {};
@@ -40,7 +40,7 @@ const EVENT_HANDLERS = {
   rowPinned: "HandleRowPinned",
   rowMoving: "HandleRowMoving",
   rowMoved: "HandleRowMoved",
-  // master-detail expansion / tree
+  // row detail expansion / tree
   rowExpanding: "HandleRowExpanding",
   rowExpanded: "HandleRowExpanded",
   treeRowExpanding: "HandleTreeRowExpanding",
@@ -80,6 +80,7 @@ function buildExpansionConfig(cfg) {
     },
   };
   if (typeof cfg.showToggleColumn === "boolean") expansion.showToggleColumn = cfg.showToggleColumn;
+  if (Array.isArray(cfg.exportParts)) expansion.exportParts = cfg.exportParts;
   return expansion;
 }
 
@@ -90,8 +91,10 @@ function chartOf(elementId) {
 }
 
 // Data and columns are set as JS *properties* on the element (arrays of objects), not attributes.
-export async function init(elementId, dataJson, columnsJson, configJson, dotNetRef) {
-  await customElements.whenDefined("apex-grid");
+// tagName lets a component that renders another grid element (one that extends <apex-grid>)
+// reuse this bridge unchanged.
+export async function init(elementId, dataJson, columnsJson, configJson, dotNetRef, tagName) {
+  await customElements.whenDefined(tagName || "apex-grid");
   const el = document.getElementById(elementId);
   if (!el) {
     console.error("apex-grid element not found:", elementId);
@@ -110,6 +113,9 @@ export async function init(elementId, dataJson, columnsJson, configJson, dotNetR
     if (cfg.rowPinning) el.rowPinning = cfg.rowPinning;
     if (cfg.rowReordering) el.rowReordering = cfg.rowReordering;
     if (typeof cfg.columnReordering === "boolean") el.columnReordering = cfg.columnReordering;
+    // Every data push from .NET is a fresh array of fresh objects, so rows can only be matched
+    // across a push by a key field.
+    if (cfg.rowIdKey) el.rowId = (row) => row?.[cfg.rowIdKey];
     if (cfg.tree && cfg.tree.enabled) el.tree = buildTreeConfig(cfg.tree);
     if (cfg.expansion && cfg.expansion.enabled) el.expansion = buildExpansionConfig(cfg.expansion);
   }
@@ -227,6 +233,22 @@ export function redo(elementId) {
 export function clearHistory(elementId) {
   chartOf(elementId).clearHistory();
 }
+// Edits name their row by data[] index, resolved to the record so rows on other pages, pinned rows
+// and rows under a collapsed tree parent are reachable.
+export function applyEdits(elementId, editsJson) {
+  const el = chartOf(elementId);
+  const data = el.data ?? [];
+  const edits = JSON.parse(editsJson);
+  const resolved = [];
+  let missing = 0;
+  for (const e of edits) {
+    const row = data[e.dataIndex];
+    if (row === undefined) missing++;
+    else resolved.push({ row, column: e.column, value: e.value });
+  }
+  const result = el.applyEdits(resolved);
+  return { ...result, skipped: result.skipped + missing };
+}
 export function canUndo(elementId) {
   return grids[elementId]?.canUndo ?? false;
 }
@@ -264,7 +286,7 @@ export function moveRow(elementId, from, to, position) {
   return chartOf(elementId).moveRow(from, to, position || "before");
 }
 
-// --- Master-detail expansion -------------------------------------------------
+// --- Row detail expansion ----------------------------------------------------
 function rowAt(elementId, index) {
   const el = chartOf(elementId);
   return { el, row: el.data?.[index] };
