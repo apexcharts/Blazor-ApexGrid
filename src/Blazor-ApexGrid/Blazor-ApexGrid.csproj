@@ -19,11 +19,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 
-    <Version>1.1.0</Version>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <Version>1.2.0-beta.1</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
     <PackageReleaseNotes>
-      1.1.0 Bundles apex-grid 3.6.0 (was 3.3.0), which drops the Ignite UI dependency and adds right-to-left layout, keyboard editing, reduced-motion and forced-colors support, and many filtering, editing and export fixes. New: ApplyEditsAsync writes a batch of cells as one undo step; RowIdKey keeps row pins, manual row order and saved selection across data changes; GridExpansionConfiguration.ExportParts; OnRowMoving/OnRowMoved carry Position and ToIndex. Behaviour to note: a change to Data now clears undo history, Home/End move within the row, CSV export escapes leading formula characters, and currency, rating and progress columns filter as numbers.
+      1.2.0-beta.1 Prerelease. Bundles apex-grid 4.0.0-beta.2 (was 3.6.0). New: opt-in Ignite UI theming, turned on once with ApexGridIgniteUI.Enable(); per grid, DesignSystem="false" turns the Ignite UI colours and font off and Tokens="false" turns off the family --apx-* tokens too. Behaviour to note: an Ignite UI stylesheet on the page no longer re-tints the grid brand or replaces its font until ApexGridIgniteUI.Enable() is called; body rows are recycled on scroll, sort and filter; the grid role and row counts moved from the apex-grid host to its inner table part; with pagination, pinned rows no longer count toward the pages.
     </PackageReleaseNotes>
   </PropertyGroup>
 

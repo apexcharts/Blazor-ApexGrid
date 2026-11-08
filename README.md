@@ -203,10 +203,11 @@ operations, current state), useful for driving a view editor or an AI layer.
 
 ## Ignite UI theming
 
-From the Blazor-ApexGrid release that bundles apex-grid 4.0, grids can follow the Ignite UI theme
+From Blazor-ApexGrid 1.2.0-beta.1, which bundles apex-grid 4.0, grids can follow the Ignite UI theme
 the page loads: the brand, text and muted text, gridlines, the header, the state colours, the
-font, light or dark. It is an add-on, it is free, and it needs no license key. Turn it on once in
-`Program.cs`:
+font, light or dark. It is an add-on, it is free, and it needs no license key. The 1.2.0 betas are
+prereleases, so install one with `dotnet add package Blazor-ApexGrid --prerelease`. Turn it on
+once in `Program.cs`:
 
 ```csharp
 using Blazor_ApexGrid;
@@ -284,4 +285,4 @@ funding, and a paid Commercial or OEM license at or above that. Embedding the gr
 or platform used by other people needs the OEM License whatever your size. See
 [LICENSE.md](LICENSE.md) for the full terms.
 
-Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v3.6.0.
+Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v4.0.0-beta.2.

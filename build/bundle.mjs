@@ -28,7 +28,7 @@ copyFileSync(
 
 // the Ignite UI add-on, a separate opt-in bundle (apex-grid 4.0 and later ship it)
 const igniteUIFile = resolve(here, '../src/Blazor-ApexGrid/wwwroot/js/apex-grid.ignite-ui.bundle.js');
-if (existsSync(resolve(here, 'node_modules/apex-grid/dist/ignite-ui.js'))) {
+if (existsSync(resolve(here, 'node_modules/apex-grid/ignite-ui.js'))) {
   await build({
     entryPoints: [resolve(here, 'entry-ignite-ui.mjs')],
     bundle: true,
