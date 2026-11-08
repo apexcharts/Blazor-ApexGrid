@@ -5,6 +5,26 @@
 // height. The bundle is fully self-contained (lit and its helpers are bundled in).
 import "./apex-grid.bundle.js?ver=3.6.0";
 
+// pending or settled load of the Ignite UI add-on (loaded at most once)
+let igniteUILoad = null;
+
+// Load the apex-grid Ignite UI add-on. It registers on a shared globalThis slot, so every grid on
+// the page follows the Ignite UI theme, including grids connected before it loaded. Resolves to
+// false (and logs) when the file cannot be loaded, so a missing add-on never blocks a grid.
+export function loadIgniteUI() {
+  if (!igniteUILoad) {
+    // keep ?ver= in step with the core bundle import above
+    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=3.6.0").then(
+      () => true,
+      (error) => {
+        console.error("failed to load the apex-grid Ignite UI add-on:", error);
+        return false;
+      }
+    );
+  }
+  return igniteUILoad;
+}
+
 // grid instances and their event-listener cleanups, keyed by element id
 const grids = {};
 const cleanups = {};

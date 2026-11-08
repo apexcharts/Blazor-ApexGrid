@@ -38,6 +38,9 @@
     {
         builder.OpenElement(0, ElementTagName);
         builder.AddAttribute(1, "id", _elementId);
+        // the core reads "off" on these attributes; leave them out to keep its defaults
+        if (DesignSystem == false) builder.AddAttribute(2, "design-system", "off");
+        if (Tokens == false) builder.AddAttribute(3, "tokens", "off");
         builder.CloseElement();
     }
 
@@ -82,6 +85,22 @@
     /// rows by id rather than by position.
     /// </summary>
     [Parameter] public string? RowIdKey { get; set; }
+
+    /// <summary>
+    /// Set to <c>false</c> to turn the Ignite UI colours and font off for this grid (the Ignite UI
+    /// light or dark variant still picks the mode). Rendered as <c>design-system="off"</c>. Has an
+    /// effect only while the Ignite UI add-on is loaded (see <see cref="ApexGridIgniteUI"/>).
+    /// Default: on. Requires apex-grid 4.0 or later.
+    /// </summary>
+    [Parameter] public bool? DesignSystem { get; set; }
+
+    /// <summary>
+    /// Set to <c>false</c> to keep this grid, and the content it renders, off the family
+    /// <c>--apx-*</c> tokens and the page's design system (the Ignite UI variant included).
+    /// Rendered as <c>tokens="off"</c>. Your <c>--ag-*</c> tokens still apply. Default: on.
+    /// Requires apex-grid 4.0 or later.
+    /// </summary>
+    [Parameter] public bool? Tokens { get; set; }
 
     /// <summary>Height of the grid (CSS value). The grid needs a bounded height for row virtualization.</summary>
     [Parameter] public string Height { get; set; } = "400px";
@@ -139,6 +158,7 @@
         if (firstRender)
         {
             var module = await GetModuleAsync();
+            if (ApexGridIgniteUI.IsEnabled) await LoadIgniteUIAsync(module);
             _dotNetRef = DotNetObjectReference.Create(this);
             _lastDataHash = DataHash();
             _initialized = await module.InvokeAsync<bool>(
@@ -153,6 +173,21 @@
                 var module = await GetModuleAsync();
                 await module.InvokeVoidAsync("setData", _elementId, SerializeData());
             }
+        }
+    }
+
+    // Loads the Ignite UI add-on through the interop module. A failure (the file missing, or a
+    // module from a derived component that does not export the loader) is logged and never blocks
+    // the grid: it then renders without the Ignite UI layer.
+    private static async Task LoadIgniteUIAsync(IJSObjectReference module)
+    {
+        try
+        {
+            await module.InvokeAsync<bool>("loadIgniteUI");
+        }
+        catch (JSException ex)
+        {
+            Console.WriteLine($"Blazor-ApexGrid: the Ignite UI add-on was not loaded: {ex.Message}");
         }
     }
 

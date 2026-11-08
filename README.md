@@ -201,6 +201,56 @@ await grid.SetStateAsync(snapshot);          // restore later (only present slic
 `GetSchemaAsync` returns a machine-readable description of the grid (columns, available
 operations, current state), useful for driving a view editor or an AI layer.
 
+## Ignite UI theming
+
+From the Blazor-ApexGrid release that bundles apex-grid 4.0, grids can follow the Ignite UI theme
+the page loads: the brand, text and muted text, gridlines, the header, the state colours, the
+font, light or dark. It is an add-on, it is free, and it needs no license key. Turn it on once in
+`Program.cs`:
+
+```csharp
+using Blazor_ApexGrid;
+
+ApexGridIgniteUI.Enable();
+```
+
+The component then loads `_content/Blazor-ApexGrid/js/apex-grid.ignite-ui.bundle.js` before the
+first grid initializes. To load it yourself instead, import it as a module in `index.html` (or
+`App.razor`):
+
+```html
+<script type="module" src="_content/Blazor-ApexGrid/js/apex-grid.ignite-ui.bundle.js"></script>
+```
+
+The Ignite UI tokens (`--ig-*`) rank below everything you set:
+
+| Rank | Source |
+| ---- | ------ |
+| 1 | An `--ag-*` token you set |
+| 2 | An `--apx-*` family token |
+| 3 | The Ignite UI theme (`--ig-*`), with the add-on loaded |
+| 4 | The built-in values |
+
+A grid follows the Ignite UI light or dark variant, and a theme swap, live: no refresh call is
+needed. Per grid:
+
+```razor
+<ApexGrid TItem="Product" Data="products" Columns="columns" DesignSystem="false" />
+<ApexGrid TItem="Product" Data="products" Columns="columns" Tokens="false" />
+```
+
+`DesignSystem="false"` (rendered as `design-system="off"`) turns the Ignite UI colours and font off;
+the variant still picks the mode. `Tokens="false"` (rendered as `tokens="off"`) turns off the family
+`--apx-*` tokens and Ignite UI, the variant included, for the grid and the content it renders.
+
+The font comes from `--ig-font-family`, which is usually a web font, and the Ignite UI theme sheets
+do not load it. Load the font on the page; the grid lays out in CSS, so it picks the font up when it
+arrives.
+
+> **Upgrading from apex-grid 3.x.** Before 4.0 the grid read some `--ig-*` tokens on its own. From
+> 4.0 it reads none without the add-on, so an app that relied on an Ignite UI stylesheet theming
+> the grid calls `ApexGridIgniteUI.Enable()`.
+
 ## Events
 
 All events surface as strongly-typed `EventCallback`s. Payloads use string fields for

@@ -1,5 +1,5 @@
 import { build } from 'esbuild';
-import { readFileSync, writeFileSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, copyFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -25,6 +25,24 @@ copyFileSync(
   resolve(here, 'node_modules/apex-grid/styles.css'),
   resolve(here, '../src/Blazor-ApexGrid/wwwroot/css/apex-grid.css')
 );
+
+// the Ignite UI add-on, a separate opt-in bundle (apex-grid 4.0 and later ship it)
+const igniteUIFile = resolve(here, '../src/Blazor-ApexGrid/wwwroot/js/apex-grid.ignite-ui.bundle.js');
+if (existsSync(resolve(here, 'node_modules/apex-grid/dist/ignite-ui.js'))) {
+  await build({
+    entryPoints: [resolve(here, 'entry-ignite-ui.mjs')],
+    bundle: true,
+    format: 'esm',
+    minify: true,
+    legalComments: 'none',
+    target: ['es2021'],
+    outfile: igniteUIFile,
+    banner: { js: `/*! apex-grid v${version} Ignite UI add-on (bundled via esbuild) | https://apexcharts.com | do not edit */` },
+  });
+  console.log(`Bundled apex-grid/ignite-ui v${version} -> ${igniteUIFile}`);
+} else {
+  console.log(`apex-grid v${version} has no ignite-ui entry; skipped the Ignite UI add-on bundle`);
+}
 
 const out = readFileSync(outFile, 'utf8');
 const bareLeft = /(?:^|[^.\w])(?:import|from)\s*["'](?:lit|igniteui|@lit)/m.test(out);
