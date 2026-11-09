@@ -81,6 +81,12 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
   objects, so the grid cannot tell a reloaded row from a new one. `RowIdKey="id"` (the
   camelCase field name) keeps row pins and a manual row order across data changes, and makes
   `GetStateAsync` capture selected and expanded rows by id instead of by position.
+- **Body rows are recycled.** From 1.2.0 (apex-grid 4.0) a scroll, sort or filter re-binds the
+  rendered row elements, and their cells, to the records now in view instead of building new ones,
+  so a row element can show another record later. Set `RowRecycling="false"` (rendered as
+  `row-recycling="false"`) to keep each row element with its record, for example when a cell
+  template keeps state in the elements it creates, or when JavaScript interop holds row elements
+  across a scroll or a sort.
 - **A data change clears undo history.** For the same reason, the grid treats every push of
   `Data` (including `RefreshAsync()`) as new records and drops its undo and redo stacks, since
   those edits were made to rows it no longer holds.
@@ -203,10 +209,9 @@ operations, current state), useful for driving a view editor or an AI layer.
 
 ## Ignite UI theming
 
-From Blazor-ApexGrid 1.2.0-beta.1, which bundles apex-grid 4.0, grids can follow the Ignite UI theme
+From Blazor-ApexGrid 1.2.0, which bundles apex-grid 4.0, grids can follow the Ignite UI theme
 the page loads: the brand, text and muted text, gridlines, the header, the state colours, the
-font, light or dark. It is an add-on, it is free, and it needs no license key. The 1.2.0 betas are
-prereleases, so install one with `dotnet add package Blazor-ApexGrid --prerelease`. Turn it on
+font, light or dark. It is an add-on, it is free, and it needs no license key. Turn it on
 once in `Program.cs`:
 
 ```csharp
@@ -285,4 +290,4 @@ funding, and a paid Commercial or OEM license at or above that. Embedding the gr
 or platform used by other people needs the OEM License whatever your size. See
 [LICENSE.md](LICENSE.md) for the full terms.
 
-Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v4.0.0-beta.2.
+Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v4.0.0.

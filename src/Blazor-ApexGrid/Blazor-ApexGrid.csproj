@@ -19,11 +19,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 
-    <Version>1.2.0-beta.1</Version>
+    <Version>1.2.0</Version>
     <AssemblyVersion>1.2.0.0</AssemblyVersion>
     <FileVersion>1.2.0.0</FileVersion>
     <PackageReleaseNotes>
-      1.2.0-beta.1 Prerelease. Bundles apex-grid 4.0.0-beta.2 (was 3.6.0). New: opt-in Ignite UI theming, turned on once with ApexGridIgniteUI.Enable(); per grid, DesignSystem="false" turns the Ignite UI colours and font off and Tokens="false" turns off the family --apx-* tokens too. Behaviour to note: an Ignite UI stylesheet on the page no longer re-tints the grid brand or replaces its font until ApexGridIgniteUI.Enable() is called; body rows are recycled on scroll, sort and filter; the grid role and row counts moved from the apex-grid host to its inner table part; with pagination, pinned rows no longer count toward the pages.
+      1.2.0 Bundles apex-grid 4.0.0 (was 3.6.0). New: opt-in Ignite UI theming, turned on once with ApexGridIgniteUI.Enable(); per grid, DesignSystem="false" turns the Ignite UI colours and font off and Tokens="false" turns off the family --apx-* tokens too. Japanese and other IME input now works in the cell editor, filter panel and quick filter, and the filter reads numbers typed in full width or with the grouping of the column locale. Behaviour to note: body rows are recycled on scroll, sort and filter, and RowRecycling="false" turns that off; an Ignite UI stylesheet on the page no longer re-tints the grid brand or replaces its font until ApexGridIgniteUI.Enable() is called; the grid role and row counts moved from the apex-grid host to its inner table part; with pagination, pinned rows no longer count toward the pages.
     </PackageReleaseNotes>
   </PropertyGroup>
 
