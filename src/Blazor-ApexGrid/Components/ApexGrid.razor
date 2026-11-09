@@ -32,7 +32,7 @@
     /// The interop module to import. It must export the same functions as the default module. Override
     /// it in a component that ships its own bundle.
     /// </summary>
-    protected virtual string ModulePath => "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=4.0.0-beta.2";
+    protected virtual string ModulePath => "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=4.0.0";
 
     private void RenderGridElement(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
     {
@@ -41,6 +41,8 @@
         // the core reads "off" on these attributes; leave them out to keep its defaults
         if (DesignSystem == false) builder.AddAttribute(2, "design-system", "off");
         if (Tokens == false) builder.AddAttribute(3, "tokens", "off");
+        // the core reads "false" here; dropping the attribute restores its default (recycling on)
+        if (RowRecycling == false) builder.AddAttribute(4, "row-recycling", "false");
         builder.CloseElement();
     }
 
@@ -101,6 +103,17 @@
     /// Requires apex-grid 4.0 or later.
     /// </summary>
     [Parameter] public bool? Tokens { get; set; }
+
+    /// <summary>
+    /// Set to <c>false</c> to keep record-keyed body rows, where each row element stays with its
+    /// record. By default the grid recycles rows: a scroll, sort or filter re-binds the rendered row
+    /// elements (and their cells) to the records now in view instead of building new ones, which
+    /// makes long jumps and sorts cheaper on large grids, so a row element can show another record
+    /// later. Turn it off when a cell or editor template keeps state in the elements it creates (some
+    /// third-party widgets do), or when JavaScript interop holds row elements across a scroll or a
+    /// sort. Rendered as <c>row-recycling="false"</c>. Default: on. Requires apex-grid 4.0 or later.
+    /// </summary>
+    [Parameter] public bool? RowRecycling { get; set; }
 
     /// <summary>Height of the grid (CSS value). The grid needs a bounded height for row virtualization.</summary>
     [Parameter] public string Height { get; set; } = "400px";

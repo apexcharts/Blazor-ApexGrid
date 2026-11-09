@@ -152,6 +152,15 @@ if (grids !== 2) failures.push(`expected 2 grids on /tree (got ${grids})`);
 if (treeRows === 0) failures.push("tree/detail page rendered no rows");
 console.log(`[tree-page] grids=${grids} rows=${treeRows}`);
 
+// RowRecycling="false" on the tree grid reaches the element as rowRecycling === false, and the
+// detail grid, which leaves it unset, keeps the core default (true).
+const recycling = await page.evaluate(() =>
+  [...document.querySelectorAll("apex-grid")].map((el) => el.rowRecycling)
+);
+if (recycling[0] !== false || recycling[1] !== true)
+  failures.push(`RowRecycling did not reach the elements as [false, true] (got ${JSON.stringify(recycling)})`);
+else console.log(`[row-recycling] tree=false detail=true`);
+
 // Row detail: "Expand all" -> element.expandAllRows(); rowExpanded round-trips to C#.
 await page.getByRole("button", { name: "Expand all", exact: true }).nth(1).click();
 await page.waitForTimeout(700);
