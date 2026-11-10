@@ -3,7 +3,7 @@
 // Importing the bundle runs apex-grid's setup(): it registers the <apex-grid> custom element (and
 // its sub-components) and adopts a default host stylesheet so the row virtualizer has a bounded
 // height. The bundle is fully self-contained (lit and its helpers are bundled in).
-import "./apex-grid.bundle.js?ver=4.0.0";
+import "./apex-grid.bundle.js?ver=4.0.1";
 
 // pending or settled load of the Ignite UI add-on (loaded at most once)
 let igniteUILoad = null;
@@ -14,7 +14,7 @@ let igniteUILoad = null;
 export function loadIgniteUI() {
   if (!igniteUILoad) {
     // keep ?ver= in step with the core bundle import above
-    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=4.0.0").then(
+    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=4.0.1").then(
       () => true,
       (error) => {
         console.error("failed to load the apex-grid Ignite UI add-on:", error);

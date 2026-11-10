@@ -8,7 +8,7 @@
     "bundle": "node bundle.mjs"
   },
   "devDependencies": {
-    "apex-grid": "4.0.0",
+    "apex-grid": "4.0.1",
     "esbuild": "^0.24.0"
   }
 }
