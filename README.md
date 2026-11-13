@@ -104,9 +104,10 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
   changing its `@key`). `Pagination`, `Data`, the attribute switches (`ShowHeader`,
   `ShowQuickFilter`, `ShowExport`, `ExportFilename`, `RowRecycling`, `DesignSystem`, `Tokens`)
   and `RefreshAsync()` for `Columns` apply on change.
-- **Cell and header templates are JavaScript function strings**, passed through
-  `AdditionalConfig`, not Razor `RenderFragment`s, so a template cannot contain Blazor
-  components.
+- **Cell, header and editor templates are not supported.** The core takes them as JavaScript
+  functions, and nothing crosses the interop as a function: a string sent through
+  `AdditionalConfig` stays a string, which the grid cannot call. Use the built-in column types
+  (`Type`) and, for a detail panel, `Expansion.DetailTemplateHtml`.
 
 ## Columns
 
@@ -122,7 +123,7 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
 | `Sort`, `Filter` | Enable sorting/filtering on the column. |
 | `Editable` | Allow inline editing (requires grid `Editing`). |
 | `Chart` | Chart type, size and ApexCharts options for a `Chart` column (see [Chart columns](#chart-columns)). |
-| `AdditionalConfig` | Escape hatch (`[JsonExtensionData]`) for options not modeled above, including JS-function-string renderers. |
+| `AdditionalConfig` | Escape hatch (`[JsonExtensionData]`) for JSON options not modeled above. Function-typed options (templates, formatters) cannot be sent. |
 
 ## Features
 
@@ -267,6 +268,12 @@ accessible `label` function are JavaScript callbacks and cannot cross the intero
 Without a global ApexCharts the cells stay empty, and the grid logs a console error naming the
 chart columns and this fix. Another package's copy of ApexCharts counts only if it sets the
 global and is 8.4.1 or later.
+
+**Keep the script tag when the app also uses Blazor-ApexCharts.** Blazor-ApexCharts (8.0 bundles
+ApexCharts 8.8.1; 7.x bundles an ApexCharts older than 8.4.1) sets `window.ApexCharts` only when
+its own script module loads, which happens when the first `ApexChart` component renders. In a
+Blazor app that is after the page's load event, so a grid with a chart column that renders
+before any `ApexChart` finds no global, logs the error and keeps its chart cells empty.
 
 ### State persistence
 

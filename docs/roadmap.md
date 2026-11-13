@@ -155,7 +155,8 @@ README's "Good to know" section as of 1.0.1:
 - **The grid needs a bounded height.** `Height` defaults to `400px`. A
   percentage whose parent has no height of its own resolves to zero and the grid
   renders as nothing, which looks identical to the render-mode mistake.
-- **Cell and header templates are JS function strings**, passed through
-  `AdditionalConfig` (`[JsonExtensionData]`), not Razor render fragments. There
-  are zero `RenderFragment` parameters in the component, so a template cannot
-  contain Blazor components.
+- **Cell and header templates are not supported.** The core takes them as JS
+  functions, and the interop never turns a string into one, so a template string
+  sent through `AdditionalConfig` (`[JsonExtensionData]`) stays a string the grid
+  cannot call. There are zero `RenderFragment` parameters in the component
+  either, so Razor templates are not an option today.

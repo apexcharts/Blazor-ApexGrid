@@ -89,8 +89,9 @@ public class GridColumn<TItem>
     public GridColumnChartConfiguration? Chart { get; set; }
 
     /// <summary>
-    /// Escape hatch for column options not modeled above (including function-typed renderers/templates
-    /// supplied as JS function strings). Keys must be the exact names the core expects.
+    /// Escape hatch for JSON column options not modeled above. Keys must be the exact names the
+    /// core expects. Function-typed options (cell, header and editor templates, formatters) cannot
+    /// be sent: a string stays a string, which the grid cannot call.
     /// </summary>
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? AdditionalConfig { get; set; }
