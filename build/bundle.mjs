@@ -45,6 +45,13 @@ if (existsSync(resolve(here, 'node_modules/apex-grid/ignite-ui.js'))) {
 }
 
 const out = readFileSync(outFile, 'utf8');
-const bareLeft = /(?:^|[^.\w])(?:import|from)\s*["'](?:lit|igniteui|@lit)/m.test(out);
 console.log(`Bundled apex-grid v${version} -> ${outFile} (${out.length} bytes)`);
-console.log(bareLeft ? 'WARNING: possible unresolved bare imports remain' : 'OK: no bare framework imports remain');
+
+// both bundles are loaded as-is by the browser, so neither may keep a bare framework import
+const bare = /(?:^|[^.\w])(?:import|from)\s*["'](?:lit|igniteui|@lit)/m;
+const withBare = [outFile, igniteUIFile].filter((file) => existsSync(file) && bare.test(readFileSync(file, 'utf8')));
+console.log(
+  withBare.length
+    ? `WARNING: possible unresolved bare imports remain in ${withBare.join(', ')}`
+    : 'OK: no bare framework imports remain'
+);
