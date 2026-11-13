@@ -1,0 +1,47 @@
+@page "/charts"
+
+<PageTitle>ApexGrid chart columns</PageTitle>
+
+<h1>Chart columns</h1>
+<p>
+    <code>GridDataType.Chart</code> draws an ApexCharts chart in every cell. ApexCharts is not
+    bundled with Blazor-ApexGrid: this app loads it with a script tag in <code>index.html</code>.
+</p>
+
+<ApexGrid TItem="Stock"
+          Data="_stocks"
+          Columns="_columns"
+          Height="280px" />
+
+@code {
+    private readonly List<GridColumn<Stock>> _columns = new()
+    {
+        new() { Key = "symbol", HeaderText = "Symbol", Width = "110px" },
+        new()
+        {
+            Key = "history", HeaderText = "Last 12 weeks", Type = GridDataType.Chart,
+            Chart = new() { Type = "area", Height = 32, Options = new { stroke = new { width = 1.5 } } },
+        },
+        new()
+        {
+            Key = "target", HeaderText = "Of target", Type = GridDataType.Chart,
+            Chart = new() { Type = "radialBar", Height = 40, Width = "60px" },
+        },
+    };
+
+    // A null entry in History is a gap in the area chart.
+    private readonly List<Stock> _stocks = new()
+    {
+        new() { Symbol = "ALPH", History = new double?[] { 12, 14, 13, 17, 16, 19, 21, 20, 23, 22, 25, 27 }, Target = new double[] { 82 } },
+        new() { Symbol = "BETA", History = new double?[] { 30, 28, 27, 29, 24, 22, null, 21, 19, 20, 18, 17 }, Target = new double[] { 41 } },
+        new() { Symbol = "GAMA", History = new double?[] { 8, 9, 9, 10, 12, 11, 13, 12, 14, 15, 15, 16 }, Target = new double[] { 64 } },
+        new() { Symbol = "DELT", History = new double?[] { 50, 52, 49, 55, 58, 54, 60, 63, 61, 66, 64, 70 }, Target = new double[] { 93 } },
+    };
+
+    public class Stock
+    {
+        public string Symbol { get; set; } = "";
+        public double?[] History { get; set; } = System.Array.Empty<double?>();
+        public double[] Target { get; set; } = System.Array.Empty<double>();
+    }
+}

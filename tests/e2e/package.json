@@ -7,6 +7,7 @@
     "test": "node smoke.mjs"
   },
   "devDependencies": {
+    "apexcharts": "8.8.1",
     "playwright": "^1.61.1"
   }
 }

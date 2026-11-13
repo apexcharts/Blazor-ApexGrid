@@ -23,10 +23,28 @@ try {
 const BASE = process.env.BASE_URL || "http://localhost:5186";
 const channel = process.env.PW_CHANNEL;
 
+// The sample's index.html loads ApexCharts from a CDN for its chart column page. Serve that URL
+// from the local apexcharts devDependency so the run does not depend on the network, and let a
+// page abort it to check the grid without ApexCharts.
+const APEXCHARTS_URL = "https://cdn.jsdelivr.net/npm/apexcharts@8.8.1/dist/apexcharts.min.js";
+let apexChartsJs = null;
+try {
+  const { createRequire } = await import("node:module");
+  const { readFileSync } = await import("node:fs");
+  const require = createRequire(import.meta.url);
+  apexChartsJs = readFileSync(require.resolve("apexcharts/dist/apexcharts.min.js"), "utf8");
+} catch {
+  // not installed: the page fetches the CDN copy
+}
+
 const failures = [];
 const launchOpts = channel ? { channel, headless: true } : { headless: true };
 const browser = await chromium.launch(launchOpts);
 const page = await browser.newPage({ viewport: { width: 1000, height: 700 } });
+if (apexChartsJs)
+  await page.route(APEXCHARTS_URL, (route) =>
+    route.fulfill({ status: 200, contentType: "text/javascript", body: apexChartsJs })
+  );
 
 const pageErrors = [];
 page.on("console", (m) => { if (m.type() === "error") pageErrors.push(m.text().slice(0, 200)); });
@@ -130,10 +148,54 @@ if (!applied || applied[1] !== "10")
   failures.push(`applyEdits did not apply to all 10 rows (${applied ? applied[0] : "no log entry"})`);
 else console.log(`[apply-edits] applied=10`);
 
-// Pagination.Paginator = PaginatorLayout.Compact serializes to the core's 'compact' layout.
-const paginator = await page.evaluate(() => document.querySelector("apex-grid")?.pagination?.paginator);
-if (paginator !== "compact") failures.push(`Paginator did not reach the element as 'compact' (got ${paginator})`);
-else console.log(`[paginator] compact`);
+// Pagination.Paginator = PaginatorLayout.Compact serializes to the core's 'compact' layout, and
+// the paginator draws the narrow fit (data-fit="2": the page size select, first and last hidden).
+const paginatorState = () =>
+  page.evaluate(() => {
+    const el = document.querySelector("apex-grid");
+    const root = el?.shadowRoot?.querySelector("apex-grid-paginator")?.shadowRoot;
+    const shown = (sel) => root?.querySelector(sel)?.checkVisibility() ?? false;
+    return {
+      paginator: el?.pagination?.paginator,
+      fit: root?.querySelector("[part=paginator]")?.dataset.fit,
+      size: shown("[part~=paginator-size]"),
+      first: shown("[part~=paginator-first]"),
+      prev: shown("[part~=paginator-prev]"),
+      last: shown("[part~=paginator-last]"),
+      page: el?.page,
+      pageSize: el?.pageSize,
+    };
+  });
+const compact = await paginatorState();
+if (
+  compact.paginator !== "compact" ||
+  compact.fit !== "2" ||
+  compact.size ||
+  compact.first ||
+  compact.last ||
+  !compact.prev
+)
+  failures.push(`Paginator did not draw the compact layout (got ${JSON.stringify(compact)})`);
+else console.log(`[paginator] compact: fit=2, size select, first and last hidden`);
+
+// A pagination change after the first render reaches the grid ("Full paginator" sets
+// Paginator = Full on the same object), and the page and page size the user picked are kept.
+await filterInput.fill("");
+await page.waitForTimeout(600);
+await page.evaluate(() => document.querySelector("apex-grid").setPageSize(3));
+await page.getByRole("button", { name: "Next page", exact: true }).click();
+await page.waitForTimeout(500);
+await page.locator("#toggle-paginator").click();
+await page.waitForTimeout(600);
+const full = await paginatorState();
+await page.locator("#toggle-paginator").click();
+await page.waitForTimeout(600);
+const back = await paginatorState();
+if (full.paginator !== "full" || full.fit === "2" || !full.size || full.page !== 1 || full.pageSize !== 3)
+  failures.push(`Paginator change did not apply live with page 1 and size 3 kept (got ${JSON.stringify(full)})`);
+else if (back.paginator !== "compact" || back.fit !== "2" || back.page !== 1)
+  failures.push(`Paginator did not switch back to compact (got ${JSON.stringify(back)})`);
+else console.log(`[paginator] live: compact -> full -> compact, page 1 and size 3 kept`);
 
 // ShowExport="true" and ExportFilename="people" render as show-export and export-filename, so the
 // toolbar export menu downloads people.csv instead of the core default data.csv.
@@ -159,7 +221,13 @@ try {
 
 // ShowHeader is rendered as show-header="false" only when false, so toggling it reaches the
 // element on change: true by default, false after "Hide header", true again after "Show header".
-const showHeader = () => page.evaluate(() => document.querySelector("apex-grid")?.showHeader);
+// The header row stays in the DOM for screen readers, visually hidden while the header is off.
+const showHeader = () =>
+  page.evaluate(() => {
+    const el = document.querySelector("apex-grid");
+    const hidden = el?.shadowRoot?.querySelector("apex-grid-header-row")?.hasAttribute("data-visually-hidden");
+    return `${el?.showHeader}/${hidden ? "hidden" : "shown"}`;
+  });
 const headerStates = [await showHeader()];
 await page.locator("#toggle-header").click();
 await page.waitForTimeout(400);
@@ -167,9 +235,27 @@ headerStates.push(await showHeader());
 await page.locator("#toggle-header").click();
 await page.waitForTimeout(400);
 headerStates.push(await showHeader());
-if (JSON.stringify(headerStates) !== "[true,false,true]")
-  failures.push(`ShowHeader did not toggle on the element as [true,false,true] (got ${JSON.stringify(headerStates)})`);
-else console.log(`[show-header] true -> false -> true`);
+if (headerStates.join(" ") !== "true/shown false/hidden true/shown")
+  failures.push(`ShowHeader did not toggle the header row (got ${JSON.stringify(headerStates)})`);
+else console.log(`[show-header] ${headerStates.join(" -> ")}`);
+
+// ShowQuickFilter renders the toolbar search box; the sample starts with it on and toggles it.
+const searchState = () =>
+  page.evaluate(() => {
+    const el = document.querySelector("apex-grid");
+    const input = el?.shadowRoot?.querySelector("apex-grid-toolbar")?.shadowRoot?.querySelector("[part=search-input]");
+    return `${el?.showQuickFilter}/${input ? "input" : "none"}`;
+  });
+const searchStates = [await searchState()];
+await page.locator("#toggle-search").click();
+await page.waitForTimeout(400);
+searchStates.push(await searchState());
+await page.locator("#toggle-search").click();
+await page.waitForTimeout(400);
+searchStates.push(await searchState());
+if (searchStates.join(" ") !== "true/input false/none true/input")
+  failures.push(`ShowQuickFilter did not toggle the toolbar search box (got ${JSON.stringify(searchStates)})`);
+else console.log(`[show-quick-filter] ${searchStates.join(" -> ")}`);
 
 // No new console/page errors should have appeared during the interactions.
 const newErrors = pageErrors.slice(errCountBefore);
@@ -212,13 +298,56 @@ else console.log(`[row-detail] rowExpanded round-tripped`);
 const treeErrors = pageErrors.slice(treeErrBefore);
 if (treeErrors.length) failures.push(`errors on /tree: ${JSON.stringify(treeErrors)}`);
 
-// GridDataType.Chart: ApexCharts is not bundled, so a chart column on a page without a global
-// window.ApexCharts must say so in the console rather than render an empty column. Drive the
-// interop module directly (the URL Blazor imported, so it is the same module instance) with a
-// throwaway grid; this runs last because it logs an error on purpose.
+// --- Chart column page ---------------------------------------------------
+// GridDataType.Chart and GridColumnChartConfiguration serialize from C# to the core's column
+// shape ({ type: 'chart', chart: { type, height, width, options } }), and with ApexCharts on the
+// page every chart cell draws an svg.
+const chartErrBefore = pageErrors.length;
+await page.getByRole("link", { name: "Chart columns" }).click();
+await page.waitForSelector("apex-grid", { timeout: 90000 }).catch(() => {});
+await page.waitForTimeout(2500);
+const chartPage = await page.evaluate(() => {
+  const el = document.querySelector("apex-grid");
+  const columns = (el?.columns ?? []).filter((c) => c.type === "chart").map((c) => ({ key: c.key, chart: c.chart }));
+  let cells = 0;
+  let drawn = 0;
+  (function walk(root) {
+    root.querySelectorAll("*").forEach((node) => {
+      if (node.tagName.toLowerCase() === "apex-grid-cell-chart") {
+        cells++;
+        if ((node.shadowRoot ?? node).querySelector("svg")) drawn++;
+      }
+      if (node.shadowRoot) walk(node.shadowRoot);
+    });
+  })(el?.shadowRoot ?? document);
+  return { columns, gap: el?.data?.[1]?.history?.[6], cells, drawn, apexCharts: typeof globalThis.ApexCharts };
+});
+const expectedColumns = JSON.stringify([
+  { key: "history", chart: { type: "area", height: 32, options: { stroke: { width: 1.5 } } } },
+  { key: "target", chart: { type: "radialBar", height: 40, width: "60px" } },
+]);
+if (JSON.stringify(chartPage.columns) !== expectedColumns)
+  failures.push(`chart columns did not serialize as expected (got ${JSON.stringify(chartPage.columns)})`);
+if (chartPage.gap !== null) failures.push(`a null history entry did not reach the grid as null (got ${chartPage.gap})`);
+if (chartPage.apexCharts !== "function") failures.push("the sample did not load ApexCharts");
+if (chartPage.cells !== 8 || chartPage.drawn !== 8)
+  failures.push(`expected 8 chart cells each with an svg (got ${chartPage.cells} cells, ${chartPage.drawn} drawn)`);
+else console.log(`[chart-column] 2 chart columns serialized, 8 cells drawn`);
+const chartPageErrors = pageErrors.slice(chartErrBefore);
+if (chartPageErrors.length) failures.push(`errors on /charts: ${JSON.stringify(chartPageErrors)}`);
+
+// GridDataType.Chart without ApexCharts: ApexCharts is not bundled, so a chart column on a page
+// without a global window.ApexCharts must say so in the console rather than render an empty
+// column. A second page blocks the sample's ApexCharts script and drives the interop module
+// directly (the URL Blazor imported, so it is the same module instance) with a throwaway grid.
+const bare = await browser.newPage({ viewport: { width: 1000, height: 700 } });
+await bare.route(APEXCHARTS_URL, (route) => route.abort());
 const chartErrors = [];
-page.on("console", (m) => { if (m.type() === "error") chartErrors.push(m.text()); });
-const chartGuard = await page.evaluate(async () => {
+bare.on("console", (m) => { if (m.type() === "error") chartErrors.push(m.text()); });
+await bare.goto(BASE + "/", { waitUntil: "domcontentloaded" });
+await bare.waitForSelector("apex-grid", { timeout: 90000 }).catch(() => {});
+await bare.waitForTimeout(2000);
+const chartGuard = await bare.evaluate(async () => {
   const m = await import("./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=5.0.0");
   const el = document.createElement("apex-grid");
   el.id = "chart-guard";
@@ -236,9 +365,11 @@ const chartGuard = await page.evaluate(async () => {
   el.remove();
   return { ok, apexCharts: typeof globalThis.ApexCharts };
 });
-await page.waitForTimeout(300);
+await bare.waitForTimeout(300);
+await bare.close();
 if (!chartGuard.ok) failures.push("chart-guard grid did not initialize");
-if (chartGuard.apexCharts !== "function" && !chartErrors.some((t) => /Blazor-ApexGrid: the chart column\(s\) trend need ApexCharts/.test(t)))
+if (chartGuard.apexCharts === "function") failures.push("chart-guard page still had ApexCharts");
+else if (!chartErrors.some((t) => /Blazor-ApexGrid: the chart column\(s\) trend need ApexCharts/.test(t)))
   failures.push(`a chart column without ApexCharts logged no Blazor-ApexGrid error (got ${JSON.stringify(chartErrors)})`);
 else console.log(`[chart-guard] missing ApexCharts reported for column 'trend'`);
 
@@ -250,6 +381,6 @@ if (failures.length) {
 }
 console.log(
   "\nE2E smoke passed: grid registered and rendered; selection, quick filter, column pinning, " +
-    "getState, the export filename and the header toggle all round-tripped across the C# <-> " +
-    "element bridge."
+    "getState, the paginator, the export filename, the header and search toggles and the chart " +
+    "column all round-tripped across the C# <-> element bridge."
 );

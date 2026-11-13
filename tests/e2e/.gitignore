@@ -1,1 +1,3 @@
 node_modules/
+# npm install writes it; CI installs without one, as build/ does
+package-lock.json

@@ -25,6 +25,8 @@
     <button @onclick="RestoreState" disabled="@(_savedState is null)">Restore state</button>
     <button @onclick="AgeEveryone">Everyone +1 year</button>
     <button id="toggle-header" @onclick="() => _showHeader = !_showHeader">@(_showHeader ? "Hide header" : "Show header")</button>
+    <button id="toggle-search" @onclick="() => _showSearch = !_showSearch">@(_showSearch ? "Hide toolbar search" : "Show toolbar search")</button>
+    <button id="toggle-paginator" @onclick="TogglePaginator">@(_pagination.Paginator == PaginatorLayout.Compact ? "Full paginator" : "Compact paginator")</button>
     <span>State: <strong id="state-len">@(_savedState?.GetRawText().Length ?? 0)</strong> chars</span>
 </div>
 
@@ -41,6 +43,7 @@
           Editing="_editing"
           ColumnReordering="true"
           ShowHeader="_showHeader"
+          ShowQuickFilter="_showSearch"
           ShowExport="true"
           ExportFilename="people"
           OnSorted="OnSorted"
@@ -60,6 +63,7 @@
     private JsonElement? _savedState;
     private string _log = "";
     private bool _showHeader = true;
+    private bool _showSearch = true;
 
     private readonly GridSortConfiguration _sort = new() { Multiple = true, TriState = true };
     private readonly PaginationConfiguration _pagination = new() { Enabled = true, PageSize = 5, PageSizeOptions = new() { 5, 10, 25 }, Paginator = PaginatorLayout.Compact };
@@ -141,6 +145,10 @@
         var result = await _grid.ApplyEditsAsync(edits);
         Log($"applyEdits: applied={result.Applied} skipped={result.Skipped}");
     }
+
+    // Pagination changes after the first render reach the grid too; the current page is kept.
+    private void TogglePaginator() =>
+        _pagination.Paginator = _pagination.Paginator == PaginatorLayout.Compact ? PaginatorLayout.Full : PaginatorLayout.Compact;
 
     private void OnSorted(GridSortEventArgs e) => Log($"sorted: {e.Key} {e.Direction}");
     private void OnPageChanged(GridPageChangedEventArgs e) => Log($"pageChanged: page {e.Page + 1}/{e.PageCount} (size {e.PageSize})");
