@@ -7,11 +7,14 @@ or npm build step is required in your app.
 
 - **Typed** `ApexGrid<TItem>` component with strongly-typed columns and events.
 - **Data pipeline**: sorting, filtering, quick filter, and (local or remote) pagination.
+- **Toolbar and header**: a built-in search box and CSV export menu with your file name, and
+  a header you can hide for compact tiles.
 - **Selection**: single or multiple, with an optional checkbox column.
 - **Inline editing**: cell or row mode, with undo/redo history.
 - **Column operations**: pin, reorder, resize, show/hide.
 - **Rows**: pinning to sticky bands and drag/keyboard reordering.
 - **Tree data** and **row detail** expansion.
+- **Chart columns**: an ApexCharts chart in every cell, drawn with an ApexCharts the app loads.
 - **State persistence**: capture and restore a JSON snapshot of the whole view.
 - Multi-targets **net8.0**, **net9.0**, and **net10.0**.
 
@@ -93,6 +96,8 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
 - **Give the grid a bounded height.** `Height` defaults to `400px`. A percentage only works if
   the parent has a height of its own; otherwise it resolves to zero and the grid renders as
   nothing.
+- **Rows cannot be made unselectable.** The core's `selection.isRowSelectable` is a JavaScript
+  predicate, which cannot cross the interop, so it is not modelled: every row is selectable.
 - **Cell and header templates are JavaScript function strings**, passed through
   `AdditionalConfig`, not Razor `RenderFragment`s, so a template cannot contain Blazor
   components.
@@ -105,11 +110,12 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
 | --- | --- |
 | `Key` | Row field to bind (camelCase property name). |
 | `HeaderText` | Header label (falls back to `Key`). |
-| `Type` | `GridDataType` controlling the cell renderer/editor (Number, String, Boolean, Select, Rating, Date, Image, Currency, Avatar, Badge, Progress, Sparkline, Status). |
+| `Type` | `GridDataType` controlling the cell renderer/editor (Number, String, Boolean, Select, Rating, Date, Image, Currency, Avatar, Badge, Progress, Sparkline, Status, Chart). |
 | `Width`, `Hidden`, `Exportable` | Layout and export. |
 | `Pinned`, `Reorderable`, `Resizable` | Column operations. |
 | `Sort`, `Filter` | Enable sorting/filtering on the column. |
 | `Editable` | Allow inline editing (requires grid `Editing`). |
+| `Chart` | Chart type, size and ApexCharts options for a `Chart` column (see [Chart columns](#chart-columns)). |
 | `AdditionalConfig` | Escape hatch (`[JsonExtensionData]`) for options not modeled above, including JS-function-string renderers. |
 
 ## Features
@@ -126,6 +132,32 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
 Drive them programmatically: `SortAsync`, `ClearSortAsync`, `FilterAsync`, `ClearFilterAsync`,
 `SetQuickFilterAsync`, `GotoPageAsync`, `NextPageAsync`/`PreviousPageAsync`,
 `FirstPageAsync`/`LastPageAsync`, `SetPageSizeAsync`.
+
+`Paginator = PaginatorLayout.Compact` on `PaginationConfiguration` always draws the narrow
+paginator (summary, previous, "page / count", next). The default, `Full`, adds the page size
+select and first and last, and drops them on its own when the grid is too narrow.
+
+### Toolbar and header
+
+```razor
+<ApexGrid TItem="Person" Data="people" Columns="columns"
+          ShowQuickFilter="true" ShowExport="true" ExportFilename="people"
+          ShowHeader="showHeader" />
+```
+
+- `ShowQuickFilter="true"` renders the built-in search box in the toolbar.
+- `ShowExport="true"` renders the export menu, and `ExportFilename` names its download
+  (`people.csv`; the default is `data.csv`).
+- `ShowHeader="false"` leaves out the column header rows, for a compact table such as a
+  dashboard tile. Sort, filter, column widths and the page are kept, and screen readers still
+  announce the column names; resizing, the column menu, drag reorder and the filter panel come
+  back with the header.
+
+All four are rendered as attributes on the element, so changing them after the first render
+takes effect.
+
+The grid's own search box and pager text come from its built-in English strings. This package
+does not model the grid's `localeText`.
 
 ### Inline editing with undo/redo
 
@@ -196,6 +228,34 @@ is always `apex-grid::part(detail-panel)`.
 
 Expansion/tree API: `ExpandRowAsync`, `CollapseRowAsync`, `ToggleRowExpansionAsync`,
 `ExpandAllRowsAsync`, `CollapseAllRowsAsync`, and the `...TreeRow...` equivalents.
+
+### Chart columns
+
+`Type = GridDataType.Chart` draws an ApexCharts chart in every cell of the column. **ApexCharts
+is not bundled in this package**, so the column works only when the app loads ApexCharts 8.4.1
+or later itself, as a global `window.ApexCharts` from a script tag in `index.html` (WebAssembly)
+or `App.razor` (Web App):
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@8.8.1/dist/apexcharts.min.js"></script>
+```
+
+```csharp
+new GridColumn<Stock>
+{
+    Key = "history", HeaderText = "Last 30 days", Type = GridDataType.Chart,
+    Chart = new() { Type = "area", Height = 32, Options = new { stroke = new { width = 1.5 } } },
+}
+```
+
+A `double[]` value (with `null` entries as gaps, from a `double?[]`) is one series; a pie,
+donut, radialBar or polarArea chart takes one value per slice or ring. `Options` merges over
+the column defaults and is the same for every row: the core's per-row options function and its
+accessible `label` function are JavaScript callbacks and cannot cross the interop.
+
+Without a global ApexCharts the cells stay empty, and the grid logs a console error naming the
+chart columns and this fix. Another package's copy of ApexCharts counts only if it sets the
+global and is 8.4.1 or later.
 
 ### State persistence
 
@@ -290,4 +350,4 @@ funding, and a paid Commercial or OEM license at or above that. Embedding the gr
 or platform used by other people needs the OEM License whatever your size. See
 [LICENSE.md](LICENSE.md) for the full terms.
 
-Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v4.0.1.
+Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v5.0.0.

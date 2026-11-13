@@ -19,11 +19,11 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
 
-    <Version>1.2.1</Version>
-    <AssemblyVersion>1.2.1.0</AssemblyVersion>
-    <FileVersion>1.2.1.0</FileVersion>
+    <Version>1.3.0</Version>
+    <AssemblyVersion>1.3.0.0</AssemblyVersion>
+    <FileVersion>1.3.0.0</FileVersion>
     <PackageReleaseNotes>
-      1.2.1 Bundles apex-grid 4.0.1 (was 4.0.0). With Ignite UI theming on, the grid card and rows take the Ignite UI surface colour, and the header, toolbar and paginator a shade lifted from it on themes that define no raised surface.
+      1.3.0 Bundles apex-grid 5.0.0 (was 4.0.1). New: ShowHeader, ShowQuickFilter, ShowExport and ExportFilename parameters; PaginationConfiguration.Paginator (Full or Compact); GridDataType.Chart with GridColumn.Chart, which draws with an ApexCharts 8.4.1 or later that the app loads itself (not bundled). The grid chrome is now sized in px, so it keeps its designed size on pages whose root font size is not 16px. Nothing a .NET caller uses is removed.
     </PackageReleaseNotes>
   </PropertyGroup>
 

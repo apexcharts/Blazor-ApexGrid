@@ -32,7 +32,7 @@
     /// The interop module to import. It must export the same functions as the default module. Override
     /// it in a component that ships its own bundle.
     /// </summary>
-    protected virtual string ModulePath => "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=4.0.1";
+    protected virtual string ModulePath => "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=5.0.0";
 
     private void RenderGridElement(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
     {
@@ -43,6 +43,12 @@
         if (Tokens == false) builder.AddAttribute(3, "tokens", "off");
         // the core reads "false" here; dropping the attribute restores its default (recycling on)
         if (RowRecycling == false) builder.AddAttribute(4, "row-recycling", "false");
+        // the core reads "false" here too; dropping the attribute shows the header again
+        if (ShowHeader == false) builder.AddAttribute(5, "show-header", "false");
+        // boolean attributes: present turns the toolbar control on, absent leaves it off
+        if (ShowQuickFilter == true) builder.AddAttribute(6, "show-quick-filter", "");
+        if (ShowExport == true) builder.AddAttribute(7, "show-export", "");
+        if (!string.IsNullOrEmpty(ExportFilename)) builder.AddAttribute(8, "export-filename", ExportFilename);
         builder.CloseElement();
     }
 
@@ -114,6 +120,36 @@
     /// sort. Rendered as <c>row-recycling="false"</c>. Default: on. Requires apex-grid 4.0 or later.
     /// </summary>
     [Parameter] public bool? RowRecycling { get; set; }
+
+    /// <summary>
+    /// Set to <c>false</c> to leave out the column header rows, for a compact table such as a short
+    /// dashboard tile where the rows get the header's room. While the header is hidden, resizing,
+    /// the column menu, drag reorder and the filter panel are unavailable; sort, filter, column
+    /// widths and the page are kept, and screen readers still announce the column names. Rendered
+    /// as <c>show-header="false"</c>, so it applies on change. Default: shown. Requires apex-grid
+    /// 4.0 or later.
+    /// </summary>
+    [Parameter] public bool? ShowHeader { get; set; }
+
+    /// <summary>
+    /// Set to <c>true</c> to render the built-in quick-filter (search) input in the grid's toolbar.
+    /// <see cref="SetQuickFilterAsync"/> works either way. Rendered as <c>show-quick-filter</c>.
+    /// Default: off.
+    /// </summary>
+    [Parameter] public bool? ShowQuickFilter { get; set; }
+
+    /// <summary>
+    /// Set to <c>true</c> to render the built-in export menu (CSV) in the grid's toolbar. Rendered as
+    /// <c>show-export</c>. Default: off.
+    /// </summary>
+    [Parameter] public bool? ShowExport { get; set; }
+
+    /// <summary>
+    /// The file name, without extension, that the toolbar export menu (see <see cref="ShowExport"/>)
+    /// downloads to, such as <c>"people"</c> for <c>people.csv</c>. Rendered as
+    /// <c>export-filename</c>. Default: <c>data</c>. Requires apex-grid 4.2 or later.
+    /// </summary>
+    [Parameter] public string? ExportFilename { get; set; }
 
     /// <summary>Height of the grid (CSS value). The grid needs a bounded height for row virtualization.</summary>
     [Parameter] public string Height { get; set; } = "400px";

@@ -46,6 +46,9 @@ public class PaginationConfiguration
 
     /// <summary>Total item count (required in remote mode).</summary>
     public int? TotalItems { get; set; }
+
+    /// <summary>The paginator layout. Defaults to Full. Requires apex-grid 4.0 or later.</summary>
+    public PaginatorLayout? Paginator { get; set; }
 }
 
 /// <summary>Inline-editing configuration. Per-column opt-in is still required via <see cref="GridColumn{TItem}.Editable"/>.</summary>
@@ -146,7 +149,10 @@ public class GridExpansionConfiguration
     public List<string>? ExportParts { get; set; }
 }
 
-/// <summary>Row-selection configuration.</summary>
+/// <summary>
+/// Row-selection configuration. The core's <c>isRowSelectable</c> is a JavaScript predicate and
+/// cannot cross the interop, so it is not modelled: every row is selectable.
+/// </summary>
 public class GridSelectionConfiguration
 {
     /// <summary>Enable selection.</summary>

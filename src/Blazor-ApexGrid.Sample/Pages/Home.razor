@@ -24,10 +24,11 @@
     <button id="save-state" @onclick="SaveState">Save state</button>
     <button @onclick="RestoreState" disabled="@(_savedState is null)">Restore state</button>
     <button @onclick="AgeEveryone">Everyone +1 year</button>
+    <button id="toggle-header" @onclick="() => _showHeader = !_showHeader">@(_showHeader ? "Hide header" : "Show header")</button>
     <span>State: <strong id="state-len">@(_savedState?.GetRawText().Length ?? 0)</strong> chars</span>
 </div>
 
-<p style="font-size:13px; color:#57606a; margin:0 0 0.5rem;">Double-click an Age or Role cell to edit inline. Edits are tracked for undo/redo.</p>
+<p style="font-size:13px; color:#57606a; margin:0 0 0.5rem;">Double-click an Age or Role cell to edit inline. Edits are tracked for undo/redo. The toolbar's export menu downloads <code>people.csv</code>.</p>
 
 <ApexGrid TItem="Person" @ref="_grid"
           Data="_people"
@@ -39,6 +40,9 @@
           Selection="_selection"
           Editing="_editing"
           ColumnReordering="true"
+          ShowHeader="_showHeader"
+          ShowExport="true"
+          ExportFilename="people"
           OnSorted="OnSorted"
           OnRowSelected="OnRowSelected"
           OnPageChanged="OnPageChanged"
@@ -55,9 +59,10 @@
     private bool _canRedo;
     private JsonElement? _savedState;
     private string _log = "";
+    private bool _showHeader = true;
 
     private readonly GridSortConfiguration _sort = new() { Multiple = true, TriState = true };
-    private readonly PaginationConfiguration _pagination = new() { Enabled = true, PageSize = 5, PageSizeOptions = new() { 5, 10, 25 } };
+    private readonly PaginationConfiguration _pagination = new() { Enabled = true, PageSize = 5, PageSizeOptions = new() { 5, 10, 25 }, Paginator = PaginatorLayout.Compact };
     private readonly GridSelectionConfiguration _selection = new() { Enabled = true, Mode = SelectionMode.Multiple, ShowCheckboxColumn = true };
     private readonly GridEditingConfiguration _editing = new()
     {

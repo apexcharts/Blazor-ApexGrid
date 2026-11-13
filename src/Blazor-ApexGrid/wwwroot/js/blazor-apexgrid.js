@@ -3,7 +3,7 @@
 // Importing the bundle runs apex-grid's setup(): it registers the <apex-grid> custom element (and
 // its sub-components) and adopts a default host stylesheet so the row virtualizer has a bounded
 // height. The bundle is fully self-contained (lit and its helpers are bundled in).
-import "./apex-grid.bundle.js?ver=4.0.1";
+import "./apex-grid.bundle.js?ver=5.0.0";
 
 // pending or settled load of the Ignite UI add-on (loaded at most once)
 let igniteUILoad = null;
@@ -14,7 +14,7 @@ let igniteUILoad = null;
 export function loadIgniteUI() {
   if (!igniteUILoad) {
     // keep ?ver= in step with the core bundle import above
-    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=4.0.1").then(
+    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=5.0.0").then(
       () => true,
       (error) => {
         console.error("failed to load the apex-grid Ignite UI add-on:", error);
@@ -104,6 +104,29 @@ function buildExpansionConfig(cfg) {
   return expansion;
 }
 
+// A `type: 'chart'` column draws with the app's own ApexCharts (8.4.1 or later): this package
+// does not bundle it, and the core only looks for a global `window.ApexCharts`. Without one the
+// cells stay empty, so say which columns are affected and how to fix it rather than leave a blank
+// column. Checked on every column push; a page still loading gets until its load event, as the
+// core does, so an async or deferred script tag still counts.
+let chartWarned = false;
+function checkChartColumns(columns) {
+  if (chartWarned || !Array.isArray(columns)) return;
+  const keys = columns.filter((c) => c?.type === "chart").map((c) => c.key);
+  if (!keys.length) return;
+  const check = () => {
+    if (chartWarned || typeof globalThis.ApexCharts === "function") return;
+    chartWarned = true;
+    console.error(
+      `Blazor-ApexGrid: the chart column(s) ${keys.join(", ")} need ApexCharts 8.4.1 or later, ` +
+        "which Blazor-ApexGrid does not bundle. Load it on the page with a script tag that " +
+        "defines window.ApexCharts (in index.html or App.razor). The cells stay empty until then."
+    );
+  };
+  if (document.readyState === "complete") check();
+  else window.addEventListener("load", check, { once: true });
+}
+
 function chartOf(elementId) {
   const el = grids[elementId];
   if (!el) throw new Error(`apex-grid instance not found: ${elementId}`);
@@ -122,6 +145,7 @@ export async function init(elementId, dataJson, columnsJson, configJson, dotNetR
   }
 
   el.columns = JSON.parse(columnsJson);
+  checkChartColumns(el.columns);
 
   // apply grid-wide config (sort/pagination/selection/editing/rows) before data
   if (configJson) {
@@ -164,7 +188,9 @@ export function setData(elementId, dataJson) {
 
 export function setColumns(elementId, columnsJson) {
   const el = grids[elementId];
-  if (el) el.columns = JSON.parse(columnsJson);
+  if (!el) return;
+  el.columns = JSON.parse(columnsJson);
+  checkChartColumns(el.columns);
 }
 
 // --- Sorting -----------------------------------------------------------------
@@ -228,7 +254,9 @@ export function moveColumn(elementId, fromKey, toKey, position) {
   return chartOf(elementId).moveColumn(fromKey, toKey, position || "before");
 }
 export function updateColumns(elementId, columnsJson) {
-  chartOf(elementId).updateColumns(JSON.parse(columnsJson));
+  const columns = JSON.parse(columnsJson);
+  chartOf(elementId).updateColumns(columns);
+  checkChartColumns(columns);
 }
 
 // --- Editing -----------------------------------------------------------------

@@ -130,6 +130,47 @@ if (!applied || applied[1] !== "10")
   failures.push(`applyEdits did not apply to all 10 rows (${applied ? applied[0] : "no log entry"})`);
 else console.log(`[apply-edits] applied=10`);
 
+// Pagination.Paginator = PaginatorLayout.Compact serializes to the core's 'compact' layout.
+const paginator = await page.evaluate(() => document.querySelector("apex-grid")?.pagination?.paginator);
+if (paginator !== "compact") failures.push(`Paginator did not reach the element as 'compact' (got ${paginator})`);
+else console.log(`[paginator] compact`);
+
+// ShowExport="true" and ExportFilename="people" render as show-export and export-filename, so the
+// toolbar export menu downloads people.csv instead of the core default data.csv.
+const exportProps = await page.evaluate(() => {
+  const el = document.querySelector("apex-grid");
+  return { showExport: el?.showExport, exportFilename: el?.exportFilename };
+});
+if (exportProps.showExport !== true || exportProps.exportFilename !== "people")
+  failures.push(`ShowExport/ExportFilename did not reach the element (got ${JSON.stringify(exportProps)})`);
+const grid = page.locator("apex-grid").first();
+try {
+  await grid.getByRole("button", { name: "Export", exact: true }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 5000 }),
+    grid.getByRole("menuitem").first().click(),
+  ]);
+  const name = download.suggestedFilename();
+  if (name !== "people.csv") failures.push(`toolbar export downloaded ${name}, expected people.csv`);
+  else console.log(`[export] toolbar menu downloaded ${name}`);
+} catch (e) {
+  failures.push(`toolbar export did not download: ${e.message.split("\n")[0]}`);
+}
+
+// ShowHeader is rendered as show-header="false" only when false, so toggling it reaches the
+// element on change: true by default, false after "Hide header", true again after "Show header".
+const showHeader = () => page.evaluate(() => document.querySelector("apex-grid")?.showHeader);
+const headerStates = [await showHeader()];
+await page.locator("#toggle-header").click();
+await page.waitForTimeout(400);
+headerStates.push(await showHeader());
+await page.locator("#toggle-header").click();
+await page.waitForTimeout(400);
+headerStates.push(await showHeader());
+if (JSON.stringify(headerStates) !== "[true,false,true]")
+  failures.push(`ShowHeader did not toggle on the element as [true,false,true] (got ${JSON.stringify(headerStates)})`);
+else console.log(`[show-header] true -> false -> true`);
+
 // No new console/page errors should have appeared during the interactions.
 const newErrors = pageErrors.slice(errCountBefore);
 if (newErrors.length) failures.push(`errors during interactions: ${JSON.stringify(newErrors)}`);
@@ -171,6 +212,36 @@ else console.log(`[row-detail] rowExpanded round-tripped`);
 const treeErrors = pageErrors.slice(treeErrBefore);
 if (treeErrors.length) failures.push(`errors on /tree: ${JSON.stringify(treeErrors)}`);
 
+// GridDataType.Chart: ApexCharts is not bundled, so a chart column on a page without a global
+// window.ApexCharts must say so in the console rather than render an empty column. Drive the
+// interop module directly (the URL Blazor imported, so it is the same module instance) with a
+// throwaway grid; this runs last because it logs an error on purpose.
+const chartErrors = [];
+page.on("console", (m) => { if (m.type() === "error") chartErrors.push(m.text()); });
+const chartGuard = await page.evaluate(async () => {
+  const m = await import("./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=5.0.0");
+  const el = document.createElement("apex-grid");
+  el.id = "chart-guard";
+  el.style.height = "120px";
+  document.body.append(el);
+  const ok = await m.init(
+    "chart-guard",
+    JSON.stringify([{ trend: [1, 3, 2] }]),
+    JSON.stringify([{ key: "trend", type: "chart", chart: { type: "line", height: 24 } }]),
+    null,
+    null,
+    "apex-grid"
+  );
+  m.destroy("chart-guard");
+  el.remove();
+  return { ok, apexCharts: typeof globalThis.ApexCharts };
+});
+await page.waitForTimeout(300);
+if (!chartGuard.ok) failures.push("chart-guard grid did not initialize");
+if (chartGuard.apexCharts !== "function" && !chartErrors.some((t) => /Blazor-ApexGrid: the chart column\(s\) trend need ApexCharts/.test(t)))
+  failures.push(`a chart column without ApexCharts logged no Blazor-ApexGrid error (got ${JSON.stringify(chartErrors)})`);
+else console.log(`[chart-guard] missing ApexCharts reported for column 'trend'`);
+
 await browser.close();
 
 if (failures.length) {
@@ -179,5 +250,6 @@ if (failures.length) {
 }
 console.log(
   "\nE2E smoke passed: grid registered and rendered; selection, quick filter, column pinning, " +
-    "and getState all round-tripped across the C# <-> element bridge."
+    "getState, the export filename and the header toggle all round-tripped across the C# <-> " +
+    "element bridge."
 );
