@@ -21,6 +21,7 @@
     private DotNetObjectReference<ApexGrid<TItem>>? _dotNetRef;
     private bool _initialized;
     private string? _lastDataHash;
+    private string? _lastPaginationJson;
 
     /// <summary>
     /// The custom element this component renders and waits for. Override it in a component that
@@ -61,7 +62,12 @@
     /// <summary>Grid-wide sorting behavior.</summary>
     [Parameter] public GridSortConfiguration? SortConfiguration { get; set; }
 
-    /// <summary>Pagination configuration.</summary>
+    /// <summary>
+    /// Pagination configuration. A change after the first render (a new object, or a property set
+    /// on this one followed by a re-render) is pushed to the grid. The grid keeps the page and page
+    /// size the user picked unless the change sets <see cref="PaginationConfiguration.Page"/> or
+    /// <see cref="PaginationConfiguration.PageSize"/> to a new value.
+    /// </summary>
     [Parameter] public PaginationConfiguration? Pagination { get; set; }
 
     /// <summary>Row-selection configuration.</summary>
@@ -210,6 +216,7 @@
             if (ApexGridIgniteUI.IsEnabled) await LoadIgniteUIAsync(module);
             _dotNetRef = DotNetObjectReference.Create(this);
             _lastDataHash = DataHash();
+            _lastPaginationJson = SerializePagination();
             _initialized = await module.InvokeAsync<bool>(
                 "init", _elementId, SerializeData(), SerializeColumns(), SerializeConfig(), _dotNetRef, ElementTagName);
         }
@@ -221,6 +228,17 @@
                 _lastDataHash = hash;
                 var module = await GetModuleAsync();
                 await module.InvokeVoidAsync("setData", _elementId, SerializeData());
+            }
+
+            // Pagination is an object parameter, so it may have been changed in place: compare
+            // what it serializes to, and send the previous form too so the interop can tell which
+            // fields changed.
+            var pagination = SerializePagination();
+            if (pagination != _lastPaginationJson)
+            {
+                var previous = _lastPaginationJson;
+                _lastPaginationJson = pagination;
+                await PushPaginationAsync(await GetModuleAsync(), pagination, previous);
             }
         }
     }
@@ -240,6 +258,20 @@
         }
     }
 
+    // A module from a derived component (ModulePath) written before this export existed has no
+    // setPagination: log it rather than fail the render, as the Ignite UI loader does.
+    private async Task PushPaginationAsync(IJSObjectReference module, string pagination, string? previous)
+    {
+        try
+        {
+            await module.InvokeVoidAsync("setPagination", _elementId, pagination, previous);
+        }
+        catch (JSException ex)
+        {
+            Console.WriteLine($"Blazor-ApexGrid: the pagination change was not applied: {ex.Message}");
+        }
+    }
+
     private string SerializeData() => GridSerializer.Serialize(Data ?? Enumerable.Empty<TItem>());
     private string SerializeColumns() => GridSerializer.Serialize(Columns ?? new List<GridColumn<TItem>>());
     private string SerializeConfig() => GridSerializer.Serialize(new
@@ -255,6 +287,7 @@
         tree = Tree,
         expansion = Expansion,
     });
+    private string SerializePagination() => GridSerializer.Serialize(Pagination);
     private string DataHash() => (Data?.GetHashCode() ?? 0).ToString() + ":" + (Data?.Count() ?? 0);
 
     // --- Public API ----------------------------------------------------------

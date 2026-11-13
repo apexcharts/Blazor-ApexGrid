@@ -213,6 +213,21 @@ export function setQuickFilter(elementId, value) {
 }
 
 // --- Pagination --------------------------------------------------------------
+// A pagination config changed in .NET after init. The grid tracks the page and page size itself
+// once the user pages, and assigning `pagination` re-applies `page` and `pageSize` when present,
+// so send them only when .NET changed them; every other field (paginator, enabled, mode,
+// totalItems, pageSizeOptions) is replaced as given, and a field set to null goes back to its
+// default. A null config turns pagination off.
+export function setPagination(elementId, nextJson, previousJson) {
+  const el = grids[elementId];
+  if (!el) return;
+  const next = JSON.parse(nextJson) ?? {};
+  const previous = (previousJson && JSON.parse(previousJson)) ?? {};
+  for (const key of ["page", "pageSize"]) {
+    if (next[key] === previous[key]) delete next[key];
+  }
+  el.pagination = next;
+}
 export function gotoPage(elementId, page) {
   return chartOf(elementId).gotoPage(page);
 }

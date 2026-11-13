@@ -98,6 +98,12 @@ No other setup is needed: the grid's JavaScript and styles are served automatica
   nothing.
 - **Rows cannot be made unselectable.** The core's `selection.isRowSelectable` is a JavaScript
   predicate, which cannot cross the interop, so it is not modelled: every row is selectable.
+- **Most grid-wide settings are read once.** `SortConfiguration`, `Selection`, `Editing`,
+  `RowPinning`, `RowReordering`, `ColumnReordering`, `RowIdKey`, `Tree` and `Expansion` apply
+  when the grid first renders; to change one later, re-create the component (for example by
+  changing its `@key`). `Pagination`, `Data`, the attribute switches (`ShowHeader`,
+  `ShowQuickFilter`, `ShowExport`, `ExportFilename`, `RowRecycling`, `DesignSystem`, `Tokens`)
+  and `RefreshAsync()` for `Columns` apply on change.
 - **Cell and header templates are JavaScript function strings**, passed through
   `AdditionalConfig`, not Razor `RenderFragment`s, so a template cannot contain Blazor
   components.
@@ -136,6 +142,11 @@ Drive them programmatically: `SortAsync`, `ClearSortAsync`, `FilterAsync`, `Clea
 `Paginator = PaginatorLayout.Compact` on `PaginationConfiguration` always draws the narrow
 paginator (summary, previous, "page / count", next). The default, `Full`, adds the page size
 select and first and last, and drops them on its own when the grid is too narrow.
+
+A change to `Pagination` after the first render (a new object, or a property set on the same
+one before the component re-renders) reaches the grid. The page and page size the user picked
+are kept unless the change sets `Page` or `PageSize` to a new value, and `Pagination = null`
+turns pagination off.
 
 ### Toolbar and header
 
