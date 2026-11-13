@@ -4,7 +4,7 @@ Decisions and known defects for `Blazor-ApexGrid`, recorded so they survive the
 conversations that produced them. Nothing here is packed into the nupkg (only
 `README.md` and `LICENSE.md` are).
 
-Last reviewed: 2026-10-31.
+Last reviewed: 2026-11-14.
 
 ---
 
@@ -57,6 +57,11 @@ which package it lives in.
 
 ### Prerequisite, needed regardless of this decision
 
+**Met in 1.3.0.** `apex-grid-enterprise` 0.10.0 depends on `apex-grid ^5.0.0`
+(as of 2026-11-14), and 1.3.0 vendors **5.0.0**. Keep the two in step: an
+enterprise release that needs a newer core needs this package bumped first.
+The original note follows.
+
 `apex-grid-enterprise` 0.8.0 depends on `apex-grid ^3.6.0` (as of 2026-10-31;
 it was 0.7.0 on `^3.5.0` when this was first written). We vendor **3.3.0**.
 The bundled core has to be bumped before any of this is possible, and it is
@@ -64,14 +69,14 @@ worth doing on its own merits.
 
 ### Seam to add when bumping the core
 
-**Done in 1.1.0.** The core is bundled at 3.6.0, and `ApexGrid<TItem>` has two
-protected virtual members: `ElementTagName` (the element it renders and waits
-for, passed to `init` as `tagName`) and `ModulePath` (the interop module to
-import). An enterprise component overrides both and points `ModulePath` at a
-bridge that re-exports this one's functions after importing its own bundle.
-`SerializeConfig` is still private and `init` only applies the keys it knows,
-so passing enterprise config is the first thing the enterprise package adds.
-The original note follows.
+**Done in 1.1.0.** The core was bundled at 3.6.0 then (5.0.0 from 1.3.0),
+and `ApexGrid<TItem>` has two protected virtual members: `ElementTagName` (the
+element it renders and waits for, passed to `init` as `tagName`) and
+`ModulePath` (the interop module to import). An enterprise component overrides
+both and points `ModulePath` at a bridge that re-exports this one's functions
+after importing its own bundle. `SerializeConfig` is still private and `init`
+only applies the keys it knows, so passing enterprise config is the first
+thing the enterprise package adds. The original note follows.
 
 The element tag is hardcoded in two places:
 
