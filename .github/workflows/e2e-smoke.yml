@@ -6,8 +6,9 @@ name: E2E Smoke (browser render + interaction)
 # at runtime. Runs on every push/PR, and especially matters when the bundled core is refreshed.
 #
 # The sample references both Blazor-ApexGrid and Blazor-ApexGrid-Enterprise, so building it builds
-# both, and npm test runs smoke.mjs (community) then enterprise.mjs (the enterprise modules, and
-# one apex-grid core per page in every load order).
+# both, and npm test runs smoke.mjs (community) then enterprise.mjs (the enterprise modules and
+# their options, a module subset, the license key through AddApexGridEnterprise, and one apex-grid
+# core per page in every load order).
 
 on:
   push:

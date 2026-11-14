@@ -1,0 +1,101 @@
+@page "/enterprise-options"
+
+<PageTitle>ApexGrid Enterprise options</PageTitle>
+
+<h1>Context menu and range selection options</h1>
+<p>
+    A context menu that replaces the built-in items with .NET ones: a cell item, a header item and a
+    cell submenu, each raising <code>OnContextMenuItemClick</code>. Range selection starts off
+    (<code>RangeSelection="false"</code>). The buttons change both parameters after the first render.
+</p>
+
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin:0.5rem 0; align-items:center;">
+    <button id="toggle-menu" @onclick="ToggleMenu">@(_menu.Enabled ? "Context menu off" : "Context menu on")</button>
+    <button id="toggle-range" @onclick="() => _rangeSelection = !_rangeSelection">@(_rangeSelection ? "Range selection off" : "Range selection on")</button>
+    <button id="select-range" @onclick="SelectRange">Select the first two salaries</button>
+    <button id="read-bounds" @onclick="ReadBounds">Read range</button>
+    <span>Range: <strong id="range-bounds">@_bounds</strong></span>
+</div>
+
+<ApexGridEnterprise TItem="Employee" @ref="_grid"
+                    Data="_employees"
+                    Columns="_columns"
+                    Height="300px"
+                    ContextMenu="_menu"
+                    RangeSelection="_rangeSelection"
+                    OnContextMenuItemClick="OnMenuItem"
+                    OnRangeChanged="OnRangeChanged" />
+
+<pre id="options-log" style="margin-top:1rem; background:#f6f8fa; padding:10px; border-radius:6px; max-height:160px; overflow:auto; font-size:12px;">@_log</pre>
+
+@code {
+    private ApexGridEnterprise<Employee>? _grid;
+    private string _log = "";
+    private string _bounds = "";
+    private bool _rangeSelection;
+    private GridContextMenuConfiguration _menu = NewMenu(enabled: true);
+
+    private static GridContextMenuConfiguration NewMenu(bool enabled) => new()
+    {
+        Enabled = enabled,
+        ReplaceDefaultItems = true,
+        Items = new()
+        {
+            new() { Id = "flag-row", Label = "Flag row", Target = ContextMenuTargetKind.Cell },
+            new() { Id = "describe-column", Label = "Describe column", Target = ContextMenuTargetKind.Header },
+            new()
+            {
+                Id = "copy-as",
+                Label = "Copy as",
+                Target = ContextMenuTargetKind.Cell,
+                SeparatorBefore = true,
+                Submenu = new()
+                {
+                    new() { Id = "copy-name", Label = "Name" },
+                    new() { Id = "copy-salary", Label = "Salary" },
+                },
+            },
+        },
+    };
+
+    private void ToggleMenu() => _menu = NewMenu(!_menu.Enabled);
+
+    private async Task SelectRange()
+        => await _grid!.SelectRangeAsync(new() { Row = 0, Column = "salary" }, new() { Row = 1, Column = "salary" });
+
+    private async Task ReadBounds()
+    {
+        var bounds = await _grid!.GetSelectionBoundsAsync();
+        _bounds = bounds is null ? "none" : $"{bounds.Top}-{bounds.Bottom}";
+    }
+
+    private void OnMenuItem(GridContextMenuItemClickEventArgs<Employee> e)
+        => Log($"contextMenu: {e.Id} kind={e.Kind} column={e.ColumnKey} row={e.Row?.Name}");
+
+    private void OnRangeChanged(GridRangeChangedEventArgs e)
+        => Log($"rangeChanged: {e.Stats.Count} cells, sum {e.Stats.Sum}");
+
+    private void Log(string line) => _log = line + "\n" + _log;
+
+    private readonly List<GridColumn<Employee>> _columns = new()
+    {
+        new() { Key = "name", HeaderText = "Name" },
+        new() { Key = "department", HeaderText = "Department" },
+        new() { Key = "salary", HeaderText = "Salary", Type = GridDataType.Number },
+    };
+
+    private readonly List<Employee> _employees = new()
+    {
+        new() { Name = "Ada Lovelace", Department = "Engineering", Salary = 120000 },
+        new() { Name = "Alan Turing", Department = "Engineering", Salary = 135000 },
+        new() { Name = "Grace Hopper", Department = "Engineering", Salary = 150000 },
+        new() { Name = "Katherine Johnson", Department = "Research", Salary = 110000 },
+    };
+
+    public class Employee
+    {
+        public string Name { get; set; } = "";
+        public string Department { get; set; } = "";
+        public int Salary { get; set; }
+    }
+}

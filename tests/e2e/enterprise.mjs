@@ -17,6 +17,18 @@
 //    with OnRangeChanged, the XLSX export (download, bytes and the toolbar menu), the pivot and its
 //    removal, and the trial watermark (no key is set in the sample).
 //
+// 3. The options the /enterprise page leaves at their defaults, through /enterprise-options:
+//    ReplaceDefaultItems, cell and header Target, a Submenu, ContextMenu Enabled = false, and
+//    RangeSelection = false then true, all set from .NET.
+//
+// 4. A module subset: the sample reads ApexGrid:Modules from appsettings.json (routed here), and
+//    with "Grouping, Aggregation" only those two work.
+//
+// 5. The license key, through the real AddApexGridEnterprise path (appsettings.json routed). A
+//    valid key is minted with a throwaway ECDSA P-256 key whose public half replaces the signing
+//    key in the served enterprise bundle; it removes the watermark. An invalid and an expired key
+//    keep it, log a console error, and never echo the key.
+//
 // Usage:
 //   BASE_URL=http://localhost:5186 node enterprise.mjs
 let chromium;
@@ -61,20 +73,39 @@ function instrumentDefine() {
   };
 }
 
-async function openPage(path) {
+// settings: served as the sample's appsettings.json (read by Program.cs into
+// AddApexGridEnterprise). signingKeySpki: replaces the license signing key in the enterprise bundle.
+async function openPage(path, { settings, signingKeySpki } = {}) {
   const page = await browser.newPage({ viewport: { width: 1100, height: 900 }, acceptDownloads: true });
   await page.addInitScript(instrumentDefine);
   if (apexChartsJs)
     await page.route(APEXCHARTS_URL, (route) =>
       route.fulfill({ status: 200, contentType: "text/javascript", body: apexChartsJs })
     );
+  if (settings)
+    await page.route("**/appsettings.json", (route) =>
+      route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(settings) })
+    );
+  if (signingKeySpki)
+    await page.route("**/apex-grid-enterprise.bundle.js*", async (route) => {
+      const response = await route.fetch();
+      const source = await response.text();
+      const keys = source.match(/publicKeysSpki=\[[^\]]*\]/g) ?? [];
+      if (keys.length !== 1) failures.push(`expected one license signing key in the bundle, found ${keys.length}`);
+      const body = source.replace(/publicKeysSpki=\[[^\]]*\]/, `publicKeysSpki=[${JSON.stringify(signingKeySpki)}]`);
+      await route.fulfill({ response, body });
+    });
   const errors = [];
-  page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 200)); });
+  const consoleLog = [];
+  page.on("console", (m) => {
+    consoleLog.push({ type: m.type(), text: m.text() });
+    if (m.type() === "error") errors.push(m.text().slice(0, 200));
+  });
   page.on("pageerror", (e) => errors.push("PAGEERROR: " + e.message.slice(0, 200)));
   // A deep link: the dev server serves the app for any route, so this loads the page's own
   // components first, which is what decides the load order.
   await page.goto(BASE + path, { waitUntil: "domcontentloaded" });
-  return { page, errors };
+  return { page, errors, consoleLog };
 }
 
 async function settle(page, selector) {
@@ -112,6 +143,16 @@ function oneCore(page) {
           .filter((name) => /\/apex-grid\.bundle\.js/.test(name))
       ),
     ];
+    // Blazor-ApexGrid's interop module, imported by both packages' components: two URLs (a ?ver=
+    // out of step) would evaluate it twice
+    const interopModules = [
+      ...new Set(
+        performance
+          .getEntriesByType("resource")
+          .map((r) => r.name)
+          .filter((name) => /\/blazor-apexgrid\.js/.test(name))
+      ),
+    ];
     return {
       extendsCore: !!enterprise && Object.getPrototypeOf(enterprise) === core,
       registryHoldsCore:
@@ -120,6 +161,7 @@ function oneCore(page) {
       registryVersion: registry?.version ?? null,
       enterpriseIsGrid: enterprises.every((el) => el instanceof core),
       coreBundles,
+      interopModules,
       multiplyDefined: Object.entries(window.__defines).filter(([, n]) => n > 1).map(([tag]) => tag),
       rowDefines: window.__defines["apex-grid-row"] ?? 0,
       defineErrors: window.__defineErrors,
@@ -137,6 +179,8 @@ function checkOneCore(label, r, { community, enterprise }) {
   if (!r.registryHoldsCore) problems.push("the shared registry does not hold the registered core");
   if (!r.enterpriseIsGrid) problems.push("an enterprise grid is not an instance of the registered ApexGrid");
   if (r.coreBundles.length !== 1) problems.push(`expected 1 core bundle URL, got ${JSON.stringify(r.coreBundles)}`);
+  if (r.interopModules.length !== 1)
+    problems.push(`expected 1 blazor-apexgrid.js URL, got ${JSON.stringify(r.interopModules)}`);
   if (r.multiplyDefined.length) problems.push(`defined more than once: ${r.multiplyDefined.join(", ")}`);
   if (r.rowDefines !== 1) problems.push(`apex-grid-row defined ${r.rowDefines} times`);
   if (r.defineErrors.length) problems.push(`define errors: ${JSON.stringify(r.defineErrors)}`);
@@ -149,8 +193,8 @@ function checkOneCore(label, r, { community, enterprise }) {
   if (problems.length) failures.push(...problems.map((p) => `[one-core ${label}] ${p}`));
   else
     console.log(
-      `[one-core ${label}] one core (apex-grid ${r.registryVersion}, 1 bundle URL, apex-grid-row defined once, ` +
-        `1 row class); rows community=${JSON.stringify(r.communityRows)} enterprise=${JSON.stringify(r.enterpriseRows)}`
+      `[one-core ${label}] one core (apex-grid ${r.registryVersion}, 1 bundle URL, 1 interop URL, ` +
+        `apex-grid-row defined once, 1 row class); rows community=${JSON.stringify(r.communityRows)} enterprise=${JSON.stringify(r.enterpriseRows)}`
     );
 }
 
@@ -391,6 +435,198 @@ function checkErrors(label, errors) {
   await page.close();
 }
 
+// Whether each enterprise grid on the page paints the trial watermark.
+function watermarks(page) {
+  return page.evaluate(() =>
+    [...document.querySelectorAll("apex-grid-enterprise")].map((el) => {
+      let found = false;
+      (function walk(r) {
+        if (r.querySelector("[part~=license-watermark]")) found = true;
+        r.querySelectorAll("*").forEach((n) => n.shadowRoot && walk(n.shadowRoot));
+      })(el.shadowRoot ?? el);
+      return found || !!el.querySelector("[part~=license-watermark]");
+    })
+  );
+}
+
+const menuItemTexts = (page) => page.locator(".apex-grid-context-menu [role=menuitem]").allInnerTexts();
+
+// --- Context menu and range selection options, set from .NET ---------------------
+{
+  const { page, errors } = await openPage("/enterprise-options");
+  await settle(page, "apex-grid-enterprise");
+  const grid = page.locator("apex-grid-enterprise").first();
+  const log = () => page.locator("#options-log").innerText();
+  const props = () =>
+    page.evaluate(() => {
+      const el = document.querySelector("apex-grid-enterprise");
+      return { rangeSelection: el.rangeSelection, contextMenu: el.contextMenu };
+    });
+
+  // ReplaceDefaultItems: only the .NET cell items, the submenu parent among them
+  await grid.locator("apex-grid-cell", { hasText: "Alan Turing" }).first().click({ button: "right" });
+  await page.waitForTimeout(500);
+  const cellItems = (await menuItemTexts(page)).map((t) => t.replace(/\W+$/, ""));
+  const parents = await page.locator(".apex-grid-context-menu [aria-haspopup=menu]").count();
+  if (JSON.stringify(cellItems) !== '["Flag row","Copy as"]' || parents !== 1)
+    failures.push(`ReplaceDefaultItems cell menu was ${JSON.stringify(cellItems)} with ${parents} submenu parent(s)`);
+  else {
+    // the Submenu opens a second menu, and its leaf raises OnContextMenuItemClick
+    await page.locator(".apex-grid-context-menu [role=menuitem]", { hasText: "Copy as" }).click();
+    await page.waitForTimeout(400);
+    const child = page.locator(".apex-grid-context-menu").nth(1);
+    const childItems = await child.locator("[role=menuitem]").allInnerTexts();
+    if (JSON.stringify(childItems) !== '["Name","Salary"]')
+      failures.push(`the Copy as submenu showed ${JSON.stringify(childItems)}`);
+    else {
+      await child.locator("[role=menuitem]", { hasText: "Salary" }).click();
+      await page.waitForTimeout(600);
+      if (!/contextMenu: copy-salary kind=cell column=name row=Alan Turing/.test(await log()))
+        failures.push(`the submenu leaf did not reach OnContextMenuItemClick (log: ${JSON.stringify(await log())})`);
+      else
+        console.log(
+          `[context-menu options] ReplaceDefaultItems: ${JSON.stringify(cellItems)}; Copy as > Salary -> copy-salary`
+        );
+    }
+  }
+  await page.keyboard.press("Escape");
+
+  // Target: a header shows only the header item
+  await grid.locator("apex-grid-header", { hasText: "Salary" }).first().click({ button: "right" });
+  await page.waitForTimeout(500);
+  const headerItems = await menuItemTexts(page);
+  if (JSON.stringify(headerItems) !== '["Describe column"]')
+    failures.push(`the header menu showed ${JSON.stringify(headerItems)}, expected only "Describe column"`);
+  else {
+    await page.locator(".apex-grid-context-menu [role=menuitem]", { hasText: "Describe column" }).click();
+    await page.waitForTimeout(600);
+    if (!/contextMenu: describe-column kind=header column=salary/.test(await log()))
+      failures.push(`the header item did not reach OnContextMenuItemClick (log: ${JSON.stringify(await log())})`);
+    else console.log(`[context-menu options] header Target: ["Describe column"] -> describe-column, column salary`);
+  }
+  await page.keyboard.press("Escape");
+
+  // RangeSelection = false: SelectRangeAsync selects nothing. Turned on after the first render, it does.
+  const before = await props();
+  await page.click("#select-range");
+  await page.waitForTimeout(400);
+  await page.click("#read-bounds");
+  await page.waitForTimeout(400);
+  const boundsOff = await page.locator("#range-bounds").innerText();
+  await page.click("#toggle-range");
+  await page.waitForTimeout(500);
+  const after = await props();
+  await page.click("#select-range");
+  await page.waitForTimeout(500);
+  await page.click("#read-bounds");
+  await page.waitForTimeout(400);
+  const boundsOn = await page.locator("#range-bounds").innerText();
+  if (before.rangeSelection !== false || boundsOff !== "none")
+    failures.push(`RangeSelection=false did not turn range selection off (element ${before.rangeSelection}, range ${boundsOff})`);
+  else if (after.rangeSelection !== true || boundsOn !== "0-1" || !/rangeChanged: 2 cells, sum 255000/.test(await log()))
+    failures.push(`RangeSelection=true after the first render did not apply (element ${after.rangeSelection}, range ${boundsOn})`);
+  else console.log(`[range-selection options] off: no range; on after the first render: rows 0-1, sum 255000`);
+
+  // ContextMenu Enabled = false after the first render: no menu opens
+  await page.click("#toggle-menu");
+  await page.waitForTimeout(500);
+  await grid.locator("apex-grid-cell", { hasText: "Ada Lovelace" }).first().click({ button: "right" });
+  await page.waitForTimeout(500);
+  const offItems = await menuItemTexts(page);
+  const offProps = await props();
+  if (offItems.length || offProps.contextMenu !== false)
+    failures.push(`ContextMenu Enabled=false still opened ${JSON.stringify(offItems)} (element ${offProps.contextMenu})`);
+  else console.log(`[context-menu options] Enabled=false after the first render: no menu opens`);
+  checkErrors("options page", errors);
+  await page.close();
+}
+
+// --- A module subset, through ApexGrid:Modules ----------------------------------
+{
+  const { page, errors } = await openPage("/enterprise", {
+    settings: { ApexGrid: { LicenseKey: "", Modules: "Grouping, Aggregation" } },
+  });
+  await settle(page, "apex-grid-enterprise");
+  const grids = await page.evaluate(() =>
+    [...document.querySelectorAll("apex-grid-enterprise")].map((el) => ({
+      groups: el.getGroups().map((g) => [g.label, g.aggregates?.salary?.sum]),
+      pivoting: el.isPivoting,
+      totals: Object.keys(el.getTotals() ?? {}).length,
+    }))
+  );
+  await page
+    .locator("apex-grid-enterprise")
+    .first()
+    .locator("apex-grid-cell", { hasText: "Alan Turing" })
+    .first()
+    .click({ button: "right" });
+  await page.waitForTimeout(500);
+  const menu = await menuItemTexts(page);
+  await page.keyboard.press("Escape");
+  await page.click("#select-salaries");
+  await page.waitForTimeout(600);
+  const rangeCount = await page.locator("#range-count").innerText();
+  if (JSON.stringify(grids[0]?.groups?.[0]) !== '["Engineering",405000]')
+    failures.push(`with Grouping and Aggregation selected, grouping did not work (got ${JSON.stringify(grids[0])})`);
+  else if (grids[1]?.totals || grids[2]?.pivoting || menu.length || rangeCount !== "0")
+    failures.push(
+      `modules outside "Grouping, Aggregation" still worked (totals ${grids[1]?.totals}, ` +
+        `pivoting ${grids[2]?.pivoting}, menu ${JSON.stringify(menu)}, range ${rangeCount})`
+    );
+  else console.log(`[modules] "Grouping, Aggregation": grouping with subtotals; no total row, pivot, menu or range`);
+  checkErrors("module subset", errors);
+  await page.close();
+}
+
+// --- The license key, through AddApexGridEnterprise ------------------------------
+{
+  const subtle = globalThis.crypto.subtle;
+  const b64 = (buf) => Buffer.from(new Uint8Array(buf)).toString("base64");
+  const pair = await subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
+  const spki = b64(await subtle.exportKey("spki", pair.publicKey));
+  // the apex-commons key format: APEX- and base64 JSON of the license data with an ECDSA P-256
+  // signature over it
+  const mint = async (expiryDate) => {
+    const data = { issueDate: "2020-01-01", expiryDate, plan: "enterprise" };
+    const signed = new TextEncoder().encode(`v1|${data.issueDate}|${data.expiryDate}|${data.plan}|`);
+    const sig = await subtle.sign({ name: "ECDSA", hash: "SHA-256" }, pair.privateKey, signed);
+    return "APEX-" + Buffer.from(JSON.stringify({ ...data, sig: b64(sig) })).toString("base64");
+  };
+  const valid = await mint("2999-01-01");
+  const cases = [
+    { label: "valid key", key: valid, path: "/enterprise", grids: 3, watermark: false },
+    { label: "valid key, mixed page", key: valid, path: "/mixed", grids: 1, watermark: false },
+    { label: "invalid key", key: "APEX-notavalidlicensekey", path: "/enterprise", grids: 3, watermark: true },
+    { label: "expired key", key: await mint("2021-01-01"), path: "/enterprise", grids: 3, watermark: true },
+  ];
+  for (const c of cases) {
+    const { page, errors, consoleLog } = await openPage(c.path, {
+      settings: { ApexGrid: { LicenseKey: c.key } },
+      signingKeySpki: spki,
+    });
+    await settle(page, "apex-grid-enterprise");
+    const marks = await watermarks(page);
+    const leaked = consoleLog.filter((m) => m.text.includes(c.key) || m.text.includes(c.key.slice(5, 25)));
+    const licenseErrors = errors.filter((e) => e.startsWith("[Apex]"));
+    const otherErrors = errors.filter((e) => !e.startsWith("[Apex]"));
+    if (marks.length !== c.grids || marks.some((m) => m !== c.watermark))
+      failures.push(`[license ${c.label}] watermarks ${JSON.stringify(marks)}, expected ${c.watermark} on ${c.grids} grid(s)`);
+    else if (leaked.length) failures.push(`[license ${c.label}] the key appears in the console: ${JSON.stringify(leaked)}`);
+    else if (c.watermark && licenseErrors.length !== 1)
+      failures.push(`[license ${c.label}] expected one [Apex] console error, got ${JSON.stringify(licenseErrors)}`);
+    else if (!c.watermark && licenseErrors.length)
+      failures.push(`[license ${c.label}] unexpected console errors ${JSON.stringify(licenseErrors)}`);
+    else
+      console.log(
+        `[license] ${c.label} on ${c.path}: watermark ${c.watermark ? "kept" : "gone"} on ${c.grids} grid(s)` +
+          (licenseErrors.length ? `, console error ${JSON.stringify(licenseErrors[0].slice(0, 50))}` : "") +
+          ", key not logged"
+      );
+    checkErrors(`license ${c.label}`, otherErrors);
+    await page.close();
+  }
+}
+
 await browser.close();
 
 if (failures.length) {
@@ -400,5 +636,6 @@ if (failures.length) {
 console.log(
   "\nEnterprise smoke passed: one apex-grid core in every load order; grouping, aggregation, the " +
     "context menu, the total row, range selection, XLSX export and the pivot all round-tripped " +
-    "across the C# <-> element bridge."
+    "across the C# <-> element bridge, as did the menu and range options, a module subset and " +
+    "the license key."
 );
