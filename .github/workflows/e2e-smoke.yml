@@ -4,6 +4,10 @@ name: E2E Smoke (browser render + interaction)
 # apex-grid is a Lit web component we bundle ourselves, so the custom-element registration, the
 # render from .data/.columns properties, and the C# -> element method bridge can only be verified
 # at runtime. Runs on every push/PR, and especially matters when the bundled core is refreshed.
+#
+# The sample references both Blazor-ApexGrid and Blazor-ApexGrid-Enterprise, so building it builds
+# both, and npm test runs smoke.mjs (community) then enterprise.mjs (the enterprise modules, and
+# one apex-grid core per page in every load order).
 
 on:
   push:
@@ -32,7 +36,7 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Build sample
+      - name: Build sample (and both packages)
         run: dotnet build src/Blazor-ApexGrid.Sample/Blazor-ApexGrid.Sample.csproj -c Debug
 
       - name: Install Playwright (chromium)

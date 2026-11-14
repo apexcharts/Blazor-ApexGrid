@@ -1,0 +1,160 @@
+name: Publish Blazor-ApexGrid-Enterprise to NuGet (Trusted Publishing)
+
+# The enterprise package releases on its own trigger: a push to main whose head commit is
+# "release-enterprise: X.Y.Z" (the community package keeps "release: X.Y.Z", which this does not
+# match). Tags are enterprise-vX.Y.Z, so they never mix with the community package's vX.Y.Z.
+#
+# Before the first run the maintainer configures a NuGet trusted publishing policy for the
+# Blazor-ApexGrid-Enterprise package ID (repository apexcharts/Blazor-ApexGrid, this workflow file,
+# environment nuget-publishing). The package depends on the Blazor-ApexGrid version its project
+# reference has, so that version must already be on nuget.org.
+#
+# Unlike the community workflow this one does not pass /p:Version: a global property would also
+# reach the referenced Blazor-ApexGrid project and stamp that version on the package dependency.
+# It checks that the csproj's <Version> is the released version instead.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: nuget-publishing
+    if: startsWith(github.event.head_commit.message, 'release-enterprise:') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check commit message and extract version
+        id: check
+        env:
+          # Through env, not pasted into the script: a message with a quote,
+          # a backtick or a dollar sign would otherwise break the step or run.
+          HEAD_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          CSPROJ=src/Blazor-ApexGrid-Enterprise/Blazor-ApexGrid-Enterprise.csproj
+          PROJECT_VERSION=$(grep -oE '<Version>[^<]+</Version>' "$CSPROJ" | head -1 | sed -E 's#</?Version>##g')
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="$PROJECT_VERSION"
+            echo "Manual trigger: using the project version $VERSION"
+          else
+            MSG="$HEAD_MSG"
+            if echo "$MSG" | grep -qE '^release-enterprise: [0-9]+\.[0-9]+\.[0-9]+'; then
+              VERSION=$(echo "$MSG" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+[^ ]*' | head -1)
+              echo "Release commit: version $VERSION"
+            else
+              echo "Commit message must match 'release-enterprise: X.Y.Z'"
+              exit 1
+            fi
+          fi
+          if [[ "$VERSION" != "$PROJECT_VERSION" ]]; then
+            echo "The release version ($VERSION) is not the <Version> in $CSPROJ ($PROJECT_VERSION)"
+            exit 1
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore src/Blazor-ApexGrid-Enterprise/Blazor-ApexGrid-Enterprise.csproj
+
+      - name: Build
+        run: |
+          dotnet build src/Blazor-ApexGrid-Enterprise/Blazor-ApexGrid-Enterprise.csproj \
+            --configuration Release \
+            --no-restore
+
+      - name: Pack
+        run: |
+          dotnet pack src/Blazor-ApexGrid-Enterprise/Blazor-ApexGrid-Enterprise.csproj \
+            --configuration Release \
+            --no-build \
+            --output ./artifacts
+
+      # The project reference packs Blazor-ApexGrid as a dependency; make sure no copy of it (or of
+      # its scripts) went into this package, and only this package is pushed.
+      - name: Check the package
+        run: |
+          PKG=./artifacts/Blazor-ApexGrid-Enterprise.${{ steps.check.outputs.version }}.nupkg
+          test -f "$PKG"
+          unzip -l "$PKG"
+          if unzip -l "$PKG" | grep -qE 'staticwebassets/js/(apex-grid\.bundle|blazor-apexgrid)\.js|Blazor-ApexGrid\.dll'; then
+            echo "The package contains Blazor-ApexGrid's files"
+            exit 1
+          fi
+          unzip -p "$PKG" '*.nuspec' | grep -q 'id="Blazor-ApexGrid"'
+
+      - name: NuGet login (OIDC -> short-lived API key)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: junedchhipa
+
+      - name: Publish to NuGet (Trusted Publishing)
+        run: |
+          dotnet nuget push ./artifacts/Blazor-ApexGrid-Enterprise.${{ steps.check.outputs.version }}.nupkg \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key ${{ steps.login.outputs.NUGET_API_KEY }} \
+            --skip-duplicate
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package-enterprise
+          path: ./artifacts/*.nupkg
+          retention-days: 30
+
+      - name: Create git tag
+        run: |
+          TAG="enterprise-v${{ steps.check.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping"
+          else
+            git tag -a "$TAG" -m "Release Blazor-ApexGrid-Enterprise ${{ steps.check.outputs.version }}"
+            git push origin "$TAG"
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="enterprise-v${{ steps.check.outputs.version }}"
+          TITLE="Blazor-ApexGrid-Enterprise ${{ steps.check.outputs.version }}"
+          # A version with a hyphen (0.2.0-beta.1) is a prerelease. An enterprise release is never
+          # marked Latest, which stays with the community package.
+          PRE=()
+          if [[ "$TAG" == *-*-* ]]; then PRE=(--prerelease); fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, skipping"
+            exit 0
+          fi
+          # The release commit's body (everything after the subject line) is the release notes.
+          NOTES="$(mktemp)"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            git log -1 --format=%b > "$NOTES"
+          fi
+          if grep -q '[^[:space:]]' "$NOTES"; then
+            PREV="$(git describe --tags --abbrev=0 --match 'enterprise-v[0-9]*' "$TAG^" 2>/dev/null || true)"
+            if [[ -n "$PREV" ]]; then
+              printf '\n**Full Changelog**: %s/%s/compare/%s...%s\n' \
+                "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$PREV" "$TAG" >> "$NOTES"
+            fi
+            gh release create "$TAG" --title "$TITLE" "${PRE[@]}" --latest=false --notes-file "$NOTES"
+          else
+            gh release create "$TAG" --generate-notes --title "$TITLE" "${PRE[@]}" --latest=false
+          fi
