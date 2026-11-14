@@ -369,14 +369,14 @@ Its `ApexGridEnterprise<TItem>` component extends `ApexGrid<TItem>`, so everythi
 on it unchanged. It depends on this package and reuses its apex-grid core, so community and
 enterprise grids can share a page with one copy of the core. ApexGrid Enterprise is a commercial
 product (Premium plan and above; without a license key it renders a trial watermark). See
-[src/Blazor-ApexGrid-Enterprise/README.md](src/Blazor-ApexGrid-Enterprise/README.md).
+[the Blazor-ApexGrid-Enterprise README](https://github.com/apexcharts/Blazor-ApexGrid/blob/main/src/Blazor-ApexGrid-Enterprise/README.md).
 
 ## Live demo
 
 A running sample (data grid, tree and row detail, chart columns, and the enterprise grids) is
 deployed at
 <https://apexcharts.github.io/Blazor-ApexGrid/>. Source is under
-[`src/Blazor-ApexGrid.Sample`](src/Blazor-ApexGrid.Sample).
+[`src/Blazor-ApexGrid.Sample`](https://github.com/apexcharts/Blazor-ApexGrid/tree/main/src/Blazor-ApexGrid.Sample).
 
 ## License
 
@@ -385,6 +385,6 @@ under the ApexCharts dual-license model: a Community License at no cost for indi
 non-profits, educators and organizations under $2M USD in annual revenue, operating budget or
 funding, and a paid Commercial or OEM license at or above that. Embedding the grid in a product
 or platform used by other people needs the OEM License whatever your size. See
-[LICENSE.md](LICENSE.md) for the full terms.
+[LICENSE.md](https://github.com/apexcharts/Blazor-ApexGrid/blob/main/LICENSE.md) for the full terms.
 
 Built on top of [apex-grid](https://www.npmjs.com/package/apex-grid) v5.0.0.

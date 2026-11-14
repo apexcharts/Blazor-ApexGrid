@@ -231,15 +231,16 @@ versions, rather than run on one it was not built for.
 ApexGrid Enterprise is a commercial product, included in the **Premium** plan and above. There is
 no free tier: the $2M threshold that makes some Apex products free does not apply, and a Premium
 license is required whatever your financial resources. Redistribution inside a product or
-platform used by other people needs the OEM License. See [LICENSE.md](LICENSE.md) for the full
-terms, and contact [sales@apexcharts.com](mailto:sales@apexcharts.com) for a license.
+platform used by other people needs the OEM License. See
+[LICENSE.md](https://github.com/apexcharts/Blazor-ApexGrid/blob/main/src/Blazor-ApexGrid-Enterprise/LICENSE.md)
+for the full terms, and contact [sales@apexcharts.com](mailto:sales@apexcharts.com) for a license.
 
 Licensing is offline: the key is checked in the browser with no network calls and nothing is
 blocked. Without a valid key (none set, one that fails its signature check, or one whose
 subscription has ended) each enterprise grid renders a trial watermark (the `license-watermark`
-part). A key that is set but cannot be used also logs a console warning that says why. One key
-works across every Apex product. Community `ApexGrid` components on the same page are not
-affected.
+part). A key that is set but cannot be used also logs a console error that says why (the key
+itself is never logged). One key works across every Apex product. Community `ApexGrid`
+components on the same page are not affected.
 
 Built on [apex-grid-enterprise](https://www.npmjs.com/package/apex-grid-enterprise) v0.10.0 and
 the apex-grid v5.0.0 core from Blazor-ApexGrid 1.4.0.

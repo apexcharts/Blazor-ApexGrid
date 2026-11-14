@@ -59,7 +59,7 @@ public class ApexGridEnterpriseOptions
 /// Licensing is offline: there are no network calls and nothing is blocked. Without a valid key
 /// (none set, a key that fails its signature check, or one whose subscription has ended) each
 /// enterprise grid renders the trial watermark; a key that is set but cannot be used also logs a
-/// console warning that says why. Community <c>ApexGrid</c> components on the same page are not
+/// console error that says why. Community <c>ApexGrid</c> components on the same page are not
 /// affected.
 /// </para>
 /// </remarks>
