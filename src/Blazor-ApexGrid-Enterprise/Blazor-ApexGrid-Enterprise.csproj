@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Blazor_ApexGrid_Enterprise</RootNamespace>
+
+    <PackageId>Blazor-ApexGrid-Enterprise</PackageId>
+    <Title>Blazor ApexGrid Enterprise</Title>
+    <Description>The enterprise companion to Blazor-ApexGrid: an ApexGridEnterprise component for apex-grid-enterprise with row grouping, aggregations, pivoting, a grand-total row, cell range selection, a context menu and XLSX export. The enterprise bundle ships inside the package and reuses the apex-grid core from Blazor-ApexGrid. A commercial product: a Premium license or higher is required, and without a license key the grid renders a trial watermark.</Description>
+    <Authors>ApexCharts</Authors>
+    <Company>ApexCharts</Company>
+    <Copyright>Copyright 2026 ApexCharts</Copyright>
+    <PackageTags>blazor;grid;datagrid;apex-grid;apex-grid-enterprise;pivot;grouping;aggregation;excel;xlsx;webassembly;server;blazor-server</PackageTags>
+    <RepositoryUrl>https://github.com/apexcharts/Blazor-ApexGrid</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/apexcharts/Blazor-ApexGrid</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <PackageReleaseNotes>
+      0.1.0 First release. Bundles apex-grid-enterprise 0.10.0 and reuses the apex-grid 5.0.0 core and Lit from Blazor-ApexGrid 1.4.0, so a page with both packages holds one core. ApexGridEnterprise&lt;TItem&gt; extends ApexGrid&lt;TItem&gt; with GroupBy and GroupingOptions, Aggregations, TotalRow, Pivot, RangeSelection, ContextMenu (custom items raise OnContextMenuItemClick) and XLSX export, plus OnRangeChanged and OnGroupExpanded. The license key and the feature modules are set once with AddApexGridEnterprise or ApexGridEnterprise.SetLicense. Not yet modelled: the server-side and infinite row models, master/detail, formulas, integrated charts, the AI toolkit and the six companion elements.
+    </PackageReleaseNotes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+  <!-- Packs as a NuGet dependency on Blazor-ApexGrid (this project's version), not a copy of it:
+       the enterprise bundle reads the core that package serves from _content/Blazor-ApexGrid/. -->
+  <ItemGroup>
+    <ProjectReference Include="..\Blazor-ApexGrid\Blazor-ApexGrid.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+    <None Include="LICENSE.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

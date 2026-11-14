@@ -1,0 +1,88 @@
+## 📄 License Options for ApexGrid Enterprise
+
+ApexGrid Enterprise is a commercial product, included in the **Premium** plan and above.
+
+Blazor-ApexGrid-Enterprise is the Blazor package of ApexGrid Enterprise: it ships the apex-grid-enterprise library inside it and is licensed on exactly the same terms, set out below. It depends on the Blazor-ApexGrid package, which carries its own LICENSE.md.
+
+**There is no free tier for ApexGrid Enterprise.** The $2M threshold that makes some Apex products free does not apply to this one: a Premium license is required whatever your financial resources, by companies, individuals, non-profits and educators alike. Without a valid license key ApexGrid Enterprise renders with a trial watermark, which is for evaluation only.
+
+One license key works across every Apex product, so a customer of one does not buy a second for another.
+
+---
+
+### 💼 Commercial License (Paid)
+
+ApexGrid Enterprise requires a **Premium** license or higher. Plans below Premium do not include it, and neither does the free Community License.
+
+Pro and Premium are priced per developer, and priced on the features you use rather than on your size.
+
+✅ What's included:
+
+- Use in internal tools and commercial applications
+- Modifications and app-level distribution
+- 12-month subscription with updates & support
+
+🚫 Not allowed:
+
+- Redistribution in toolkits, SDKs, or platforms
+- Use by unlicensed developers
+- Competing data grid or charting products
+
+---
+
+### 🏛 Non-Profit Tiers
+
+Non-Profits are treated like commercial entities and need a **Premium** license or higher for ApexGrid Enterprise, whatever their annual operating budget. Discounts are available: ask us before you buy.
+
+---
+
+### 🔄 OEM / Redistribution License (Paid)
+
+Required if you are **embedding ApexGrid Enterprise into a product or platform used by other people**, such as:
+
+- No-code dashboards
+- Developer platforms
+- Embedded BI tools
+- SDKs
+
+✅ What's included:
+
+- Redistribution rights for **one application or product**
+- **Every licensed feature**, at the highest tier
+- 12-month subscription with updates & support
+
+⚠️ **Developer licenses are purchased separately.** The OEM License grants redistribution rights and carries no developer seats. Each developer who works with ApexGrid Enterprise in that application also needs a **Community + Commercial** license of their own. That is the tier whatever features your product uses, because the license key comes from the OEM License and already renders every licensed feature.
+
+Your end users need no license of their own. A second application needs a second OEM license. White-label, resale, and affiliate arrangements are quoted separately.
+
+✅ OEM **not required** if your app simply renders static grids and users **cannot** configure or interact with them.
+
+---
+
+### ⏳ When a subscription ends
+
+Your license key expires and **ApexGrid Enterprise renders with a trial watermark**, because the whole product is licensed rather than a set of features inside a free one. You no longer receive updates, new features, or technical support. Your existing deployment keeps running.
+
+For OEM licenses, continued redistribution requires an active subscription.
+
+---
+
+### ⚠️ License Acceptance
+
+By installing ApexGrid Enterprise (e.g., via `npm install apex-grid-enterprise` or `dotnet add package Blazor-ApexGrid-Enterprise`), you are agreeing to the applicable license based on your usage:
+
+- Commercial License (Premium or higher, whatever your financial resources)
+- OEM License (if redistributing to third-party users)
+
+---
+
+### 🛠 Need a License or Have Questions?
+
+📧 Contact us at [sales@apexcharts.com](mailto:sales@apexcharts.com)
+📚 Read full license agreements here: [https://apexcharts.com/license](https://apexcharts.com/license)
+
+---
+
+Copyright © 2026 ApexCharts. All rights reserved.
+
+Thank you for supporting ApexGrid Enterprise! Your licensing funds its continued development and support.
