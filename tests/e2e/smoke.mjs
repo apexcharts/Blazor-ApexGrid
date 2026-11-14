@@ -348,7 +348,7 @@ await bare.goto(BASE + "/", { waitUntil: "domcontentloaded" });
 await bare.waitForSelector("apex-grid", { timeout: 90000 }).catch(() => {});
 await bare.waitForTimeout(2000);
 const chartGuard = await bare.evaluate(async () => {
-  const m = await import("./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=5.0.0");
+  const m = await import("./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=1.4.0");
   const el = document.createElement("apex-grid");
   el.id = "chart-guard";
   el.style.height = "120px";

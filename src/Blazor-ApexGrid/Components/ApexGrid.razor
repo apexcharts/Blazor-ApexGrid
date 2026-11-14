@@ -33,7 +33,19 @@
     /// The interop module to import. It must export the same functions as the default module. Override
     /// it in a component that ships its own bundle.
     /// </summary>
-    protected virtual string ModulePath => "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=5.0.0";
+    protected virtual string ModulePath => "./_content/Blazor-ApexGrid/js/blazor-apexgrid.js?ver=1.4.0";
+
+    /// <summary>
+    /// The id of the rendered grid element, which every interop function takes as its first
+    /// argument. For a derived component that calls functions of its own module.
+    /// </summary>
+    protected string ElementId => _elementId;
+
+    /// <summary>
+    /// Whether the interop module's <c>init</c> has run and the grid is ready for calls. Every
+    /// public method returns early (or a default) until then; a derived component's should too.
+    /// </summary>
+    protected bool IsInitialized => _initialized;
 
     private void RenderGridElement(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
     {
@@ -205,7 +217,11 @@
     [Parameter] public EventCallback<GridTreeRowExpansionEventArgs<TItem>> OnTreeRowExpanding { get; set; }
     [Parameter] public EventCallback<GridTreeRowExpansionEventArgs<TItem>> OnTreeRowExpanded { get; set; }
 
-    private async Task<IJSObjectReference> GetModuleAsync()
+    /// <summary>
+    /// Imports the interop module named by <see cref="ModulePath"/> once and returns it. A derived
+    /// component calls its own module's functions through this.
+    /// </summary>
+    protected async Task<IJSObjectReference> GetModuleAsync()
         => _module ??= await JSRuntime.InvokeAsync<IJSObjectReference>("import", ModulePath);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -274,19 +290,39 @@
 
     private string SerializeData() => GridSerializer.Serialize(Data ?? Enumerable.Empty<TItem>());
     private string SerializeColumns() => GridSerializer.Serialize(Columns ?? new List<GridColumn<TItem>>());
-    private string SerializeConfig() => GridSerializer.Serialize(new
+    private string SerializeConfig()
     {
-        sortConfiguration = SortConfiguration,
-        pagination = Pagination,
-        selection = Selection,
-        editing = Editing,
-        rowPinning = RowPinning,
-        rowReordering = RowReordering,
-        columnReordering = ColumnReordering,
-        rowIdKey = RowIdKey,
-        tree = Tree,
-        expansion = Expansion,
-    });
+        // null values are left out, as GridSerializer does for properties
+        var config = new Dictionary<string, object?>();
+        void Add(string key, object? value)
+        {
+            if (value is not null) config[key] = value;
+        }
+        Add("sortConfiguration", SortConfiguration);
+        Add("pagination", Pagination);
+        Add("selection", Selection);
+        Add("editing", Editing);
+        Add("rowPinning", RowPinning);
+        Add("rowReordering", RowReordering);
+        Add("columnReordering", ColumnReordering);
+        Add("rowIdKey", RowIdKey);
+        Add("tree", Tree);
+        Add("expansion", Expansion);
+        ExtendConfig(config);
+        return GridSerializer.Serialize(config);
+    }
+
+    /// <summary>
+    /// Adds keys to the grid-wide config the interop module's <c>init</c> receives at first
+    /// render. The default module applies only the keys it knows, so a derived component that adds
+    /// keys also supplies a <see cref="ModulePath"/> whose <c>init</c> applies them (it can pass
+    /// the default module's <c>init</c> an <c>applyConfig</c> function for that). Keys are sent as
+    /// given (use the camelCase name), and values are serialized with
+    /// <see cref="GridSerializer.Default"/>. The default adds nothing.
+    /// </summary>
+    /// <param name="config">The config keys already set, by name. Add to it or replace entries.</param>
+    protected virtual void ExtendConfig(IDictionary<string, object?> config) { }
+
     private string SerializePagination() => GridSerializer.Serialize(Pagination);
     private string DataHash() => (Data?.GetHashCode() ?? 0).ToString() + ":" + (Data?.Count() ?? 0);
 

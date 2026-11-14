@@ -2,8 +2,13 @@
 //
 // Importing the bundle runs apex-grid's setup(): it registers the <apex-grid> custom element (and
 // its sub-components) and adopts a default host stylesheet so the row virtualizer has a bounded
-// height. The bundle is fully self-contained (lit and its helpers are bundled in).
-import "./apex-grid.bundle.js?ver=5.0.0";
+// height. The bundle is fully self-contained (lit and its helpers are bundled in), and it shares
+// its core and Lit with Blazor-ApexGrid-Enterprise, whose interop module imports this one first
+// (see build/shared.mjs), so a page holds one core whichever package loads first.
+//
+// ?ver= is this package's version: the vendored files can change in a release that keeps the
+// same apex-grid version, and the cache key has to change with them.
+import "./apex-grid.bundle.js?ver=1.4.0";
 
 // pending or settled load of the Ignite UI add-on (loaded at most once)
 let igniteUILoad = null;
@@ -14,7 +19,7 @@ let igniteUILoad = null;
 export function loadIgniteUI() {
   if (!igniteUILoad) {
     // keep ?ver= in step with the core bundle import above
-    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=5.0.0").then(
+    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=1.4.0").then(
       () => true,
       (error) => {
         console.error("failed to load the apex-grid Ignite UI add-on:", error);
@@ -135,8 +140,11 @@ function chartOf(elementId) {
 
 // Data and columns are set as JS *properties* on the element (arrays of objects), not attributes.
 // tagName lets a component that renders another grid element (one that extends <apex-grid>)
-// reuse this bridge unchanged.
-export async function init(elementId, dataJson, columnsJson, configJson, dotNetRef, tagName) {
+// reuse this bridge unchanged. applyConfig is for a module that wraps this one (a derived
+// component's ModulePath), never passed from .NET: it is called as applyConfig(el, cfg, dotNetRef)
+// after the keys below and before the data, so config keys this module does not know (those a
+// derived component adds through ExtendConfig) land in the same update as the rest.
+export async function init(elementId, dataJson, columnsJson, configJson, dotNetRef, tagName, applyConfig) {
   await customElements.whenDefined(tagName || "apex-grid");
   const el = document.getElementById(elementId);
   if (!el) {
@@ -162,6 +170,7 @@ export async function init(elementId, dataJson, columnsJson, configJson, dotNetR
     if (cfg.rowIdKey) el.rowId = (row) => row?.[cfg.rowIdKey];
     if (cfg.tree && cfg.tree.enabled) el.tree = buildTreeConfig(cfg.tree);
     if (cfg.expansion && cfg.expansion.enabled) el.expansion = buildExpansionConfig(cfg.expansion);
+    if (typeof applyConfig === "function") applyConfig(el, cfg, dotNetRef);
   }
 
   el.data = JSON.parse(dataJson);
