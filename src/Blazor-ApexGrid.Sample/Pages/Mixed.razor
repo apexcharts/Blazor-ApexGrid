@@ -1,0 +1,53 @@
+@page "/mixed"
+
+<PageTitle>Community and enterprise grids</PageTitle>
+
+<h1>Community and enterprise on one page</h1>
+<p>
+    An <code>ApexGridEnterprise</code> and a community <code>ApexGrid</code> side by side. The
+    enterprise bundle reuses the apex-grid core that Blazor-ApexGrid loads, so the page holds one
+    core: <code>&lt;apex-grid-enterprise&gt;</code> extends the same <code>ApexGrid</code> class that
+    is registered as <code>&lt;apex-grid&gt;</code>, whichever grid renders first.
+</p>
+
+<h2 style="font-size:1.1rem;">Enterprise, grouped by role</h2>
+<ApexGridEnterprise TItem="Person"
+                    Data="_people"
+                    Columns="_columns"
+                    Height="260px"
+                    GroupBy="_groupBy"
+                    Aggregations="_aggregations" />
+
+<h2 style="font-size:1.1rem;">Community</h2>
+<ApexGrid TItem="Person"
+          Data="_people"
+          Columns="_columns"
+          Height="260px" />
+
+@code {
+    private readonly List<string> _groupBy = new() { "role" };
+    private readonly GridAggregations _aggregations = new() { { "age", AggregationFunction.Avg } };
+
+    private readonly List<GridColumn<Person>> _columns = new()
+    {
+        new() { Key = "name", HeaderText = "Name", Sort = true },
+        new() { Key = "role", HeaderText = "Role", Sort = true },
+        new() { Key = "age", HeaderText = "Age", Type = GridDataType.Number, Sort = true },
+    };
+
+    private readonly List<Person> _people = new()
+    {
+        new() { Name = "Ada Lovelace", Role = "Mathematician", Age = 36 },
+        new() { Name = "Alan Turing", Role = "Computer Scientist", Age = 41 },
+        new() { Name = "Grace Hopper", Role = "Programmer", Age = 44 },
+        new() { Name = "Barbara Liskov", Role = "Computer Scientist", Age = 45 },
+        new() { Name = "Linus Torvalds", Role = "Programmer", Age = 39 },
+    };
+
+    public class Person
+    {
+        public string Name { get; set; } = "";
+        public string Role { get; set; } = "";
+        public int Age { get; set; }
+    }
+}

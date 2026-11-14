@@ -2,9 +2,9 @@
   "name": "blazor-apexgrid-e2e",
   "private": true,
   "type": "module",
-  "description": "Headless browser smoke test for the Blazor-ApexGrid sample. Guards against interop-only regressions (a grid that builds and serializes cleanly but fails to register, render, or wire up its web component in the browser) whenever the bundled apex-grid core is refreshed.",
+  "description": "Headless browser smoke test for the Blazor-ApexGrid sample. Guards against interop-only regressions (a grid that builds and serializes cleanly but fails to register, render, or wire up its web component in the browser) whenever the bundled apex-grid core is refreshed. enterprise.mjs does the same for Blazor-ApexGrid-Enterprise and checks that a page with both packages holds one apex-grid core.",
   "scripts": {
-    "test": "node smoke.mjs"
+    "test": "node smoke.mjs && node enterprise.mjs"
   },
   "devDependencies": {
     "apexcharts": "8.8.1",

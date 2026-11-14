@@ -1,0 +1,226 @@
+@page "/enterprise"
+
+<PageTitle>ApexGrid Enterprise</PageTitle>
+
+<h1>Enterprise</h1>
+<p>
+    <code>ApexGridEnterprise&lt;TItem&gt;</code> from Blazor-ApexGrid-Enterprise: row grouping with
+    aggregations, a grand-total row, cell range selection, a context menu, XLSX export and a pivot.
+    No license key is set in this sample, so each grid shows the trial watermark.
+</p>
+
+<h2 style="font-size:1.1rem;">Grouping and aggregation</h2>
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin:0.5rem 0; align-items:center;">
+    <button id="group-department" @onclick='() => _groupBy = new() { "department" }'>Group by department</button>
+    <button id="group-region" @onclick='() => _groupBy = new() { "region", "department" }'>Group by region, department</button>
+    <button id="ungroup" @onclick="() => _groupBy = new()">Ungroup</button>
+    <button @onclick="() => _grouped!.ExpandAllGroupsAsync()">Expand all</button>
+    <button @onclick="() => _grouped!.CollapseAllGroupsAsync()">Collapse all</button>
+    <button id="read-aggregations" @onclick="ReadAggregations">Read aggregations</button>
+    <span>Salary sum: <strong id="agg-salary-sum">@_salarySum</strong>, groups: <strong id="group-count">@_groupCount</strong></span>
+</div>
+<p style="font-size:13px; color:#57606a; margin:0 0 0.5rem;">Right-click a cell for the "Log this row" item added from .NET.</p>
+
+<ApexGridEnterprise TItem="Employee" @ref="_grouped"
+                    Data="_employees"
+                    Columns="_columns"
+                    Height="320px"
+                    GroupBy="_groupBy"
+                    GroupingOptions="_grouping"
+                    Aggregations="_aggregations"
+                    ContextMenu="_menu"
+                    OnGroupExpanded="OnGroupExpanded"
+                    OnContextMenuItemClick="OnMenuItem" />
+
+<h2 style="font-size:1.1rem;">Grand-total row, range selection and XLSX export</h2>
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin:0.5rem 0; align-items:center;">
+    <button id="select-salaries" @onclick="SelectSalaries">Select the first four salaries</button>
+    <button @onclick="() => _flat!.ClearRangeSelectionAsync()">Clear range</button>
+    <button id="read-totals" @onclick="ReadTotals">Read totals</button>
+    <button id="export-xlsx" @onclick='() => _flat!.ExportToXlsxAsync(new() { Filename = "employees", SheetName = "Staff" })'>Export XLSX</button>
+    <button id="xlsx-bytes-button" @onclick="ReadXlsxBytes">XLSX bytes</button>
+    <span>
+        Range: <strong id="range-count">@_rangeCount</strong> cells, sum <strong id="range-sum">@_rangeSum</strong>;
+        total: <strong id="total-salary">@_totalSalary</strong>;
+        xlsx: <strong id="xlsx-bytes">@_xlsxLength</strong> bytes, <strong id="xlsx-sig">@_xlsxSignature</strong>
+    </span>
+</div>
+
+<ApexGridEnterprise TItem="Employee" @ref="_flat"
+                    Data="_employees"
+                    Columns="_columns"
+                    Height="340px"
+                    TotalRow="_totalRow"
+                    ShowExport="true"
+                    ExportFilename="employees"
+                    OnRangeChanged="OnRangeChanged" />
+
+<h2 style="font-size:1.1rem;">Pivot</h2>
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin:0.5rem 0; align-items:center;">
+    <button id="toggle-pivot" @onclick="TogglePivot">@(_pivot is null ? "Pivot on" : "Pivot off")</button>
+    <button id="read-pivoting" @onclick="ReadPivoting">Is pivoting?</button>
+    <span>Pivoting: <strong id="pivoting">@_pivoting</strong></span>
+</div>
+
+<ApexGridEnterprise TItem="Sale" @ref="_sales"
+                    Data="_salesData"
+                    Columns="_salesColumns"
+                    Height="260px"
+                    Pivot="_pivot" />
+
+<pre id="ent-log" style="margin-top:1rem; background:#f6f8fa; padding:10px; border-radius:6px; max-height:160px; overflow:auto; font-size:12px;">@_log</pre>
+
+@code {
+    private ApexGridEnterprise<Employee>? _grouped;
+    private ApexGridEnterprise<Employee>? _flat;
+    private ApexGridEnterprise<Sale>? _sales;
+    private string _log = "";
+    private string _salarySum = "";
+    private string _groupCount = "";
+    private int _rangeCount;
+    private double _rangeSum;
+    private string _totalSalary = "";
+    private int _xlsxLength;
+    private string _xlsxSignature = "";
+    private string _pivoting = "";
+
+    private List<string> _groupBy = new() { "department" };
+    private readonly GridGroupingOptions _grouping = new() { DefaultExpanded = true };
+    private readonly GridAggregations _aggregations = new()
+    {
+        { "salary", AggregationFunction.Sum, AggregationFunction.Avg },
+    };
+
+    private readonly GridContextMenuConfiguration _menu = new()
+    {
+        Items = new()
+        {
+            new() { Id = "log-row", Label = "Log this row", Target = ContextMenuTargetKind.Cell, SeparatorBefore = true },
+        },
+    };
+
+    private readonly GridTotalRowConfiguration _totalRow = new()
+    {
+        Aggregations = new()
+        {
+            { "salary", AggregationFunction.Sum },
+            { "age", AggregationFunction.Max },
+        },
+        Label = "Total",
+    };
+
+    private GridPivotConfiguration? _pivot = NewPivot();
+
+    private static GridPivotConfiguration NewPivot() => new()
+    {
+        Rows = new() { "region" },
+        On = new() { "quarter" },
+        Values = new() { { "revenue", AggregationFunction.Sum } },
+        Options = new() { GrandTotal = PivotGrandTotalPosition.Bottom },
+    };
+
+    private readonly List<GridColumn<Employee>> _columns = new()
+    {
+        new() { Key = "name", HeaderText = "Name", Sort = true, Filter = true },
+        new() { Key = "department", HeaderText = "Department", Sort = true },
+        new() { Key = "region", HeaderText = "Region", Sort = true },
+        new() { Key = "salary", HeaderText = "Salary", Type = GridDataType.Number, Sort = true },
+        new() { Key = "age", HeaderText = "Age", Type = GridDataType.Number, Sort = true },
+    };
+
+    private readonly List<Employee> _employees = new()
+    {
+        new() { Name = "Ada Lovelace", Department = "Engineering", Region = "EMEA", Salary = 120000, Age = 36 },
+        new() { Name = "Alan Turing", Department = "Engineering", Region = "EMEA", Salary = 135000, Age = 41 },
+        new() { Name = "Grace Hopper", Department = "Engineering", Region = "AMER", Salary = 150000, Age = 44 },
+        new() { Name = "Katherine Johnson", Department = "Research", Region = "AMER", Salary = 110000, Age = 52 },
+        new() { Name = "Edsger Dijkstra", Department = "Research", Region = "EMEA", Salary = 125000, Age = 48 },
+        new() { Name = "Barbara Liskov", Department = "Research", Region = "AMER", Salary = 140000, Age = 45 },
+        new() { Name = "Margaret Hamilton", Department = "Operations", Region = "AMER", Salary = 130000, Age = 42 },
+        new() { Name = "Linus Torvalds", Department = "Operations", Region = "EMEA", Salary = 115000, Age = 39 },
+    };
+
+    private readonly List<GridColumn<Sale>> _salesColumns = new()
+    {
+        new() { Key = "region", HeaderText = "Region" },
+        new() { Key = "quarter", HeaderText = "Quarter" },
+        new() { Key = "product", HeaderText = "Product" },
+        new() { Key = "revenue", HeaderText = "Revenue", Type = GridDataType.Number },
+    };
+
+    private readonly List<Sale> _salesData = new()
+    {
+        new() { Region = "EMEA", Quarter = "Q1", Product = "Grid", Revenue = 40 },
+        new() { Region = "EMEA", Quarter = "Q2", Product = "Grid", Revenue = 45 },
+        new() { Region = "EMEA", Quarter = "Q3", Product = "Charts", Revenue = 30 },
+        new() { Region = "EMEA", Quarter = "Q4", Product = "Charts", Revenue = 35 },
+        new() { Region = "AMER", Quarter = "Q1", Product = "Grid", Revenue = 60 },
+        new() { Region = "AMER", Quarter = "Q2", Product = "Charts", Revenue = 55 },
+        new() { Region = "AMER", Quarter = "Q3", Product = "Grid", Revenue = 65 },
+        new() { Region = "AMER", Quarter = "Q4", Product = "Charts", Revenue = 70 },
+        new() { Region = "APAC", Quarter = "Q1", Product = "Charts", Revenue = 20 },
+        new() { Region = "APAC", Quarter = "Q2", Product = "Grid", Revenue = 25 },
+        new() { Region = "APAC", Quarter = "Q3", Product = "Grid", Revenue = 30 },
+        new() { Region = "APAC", Quarter = "Q4", Product = "Charts", Revenue = 35 },
+        new() { Region = "APAC", Quarter = "Q4", Product = "Grid", Revenue = 10 },
+    };
+
+    private async Task ReadAggregations()
+    {
+        var results = await _grouped!.GetAggregationsAsync();
+        _salarySum = results.Get("salary", AggregationFunction.Sum)?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "";
+        _groupCount = (await _grouped.GetGroupsAsync()).Count.ToString();
+    }
+
+    private async Task SelectSalaries()
+        => await _flat!.SelectRangeAsync(new() { Row = 0, Column = "salary" }, new() { Row = 3, Column = "salary" });
+
+    private async Task ReadTotals()
+    {
+        var totals = await _flat!.GetTotalsAsync();
+        _totalSalary = totals.Get("salary", AggregationFunction.Sum)?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "";
+    }
+
+    private async Task ReadXlsxBytes()
+    {
+        var bytes = await _flat!.GetXlsxBytesAsync(new() { SheetName = "Staff" });
+        _xlsxLength = bytes.Length;
+        _xlsxSignature = bytes.Length >= 2 ? System.Text.Encoding.ASCII.GetString(bytes, 0, 2) : "";
+    }
+
+    private void TogglePivot() => _pivot = _pivot is null ? NewPivot() : null;
+
+    private async Task ReadPivoting() => _pivoting = (await _sales!.IsPivotingAsync()).ToString().ToLowerInvariant();
+
+    private void OnRangeChanged(GridRangeChangedEventArgs e)
+    {
+        _rangeCount = e.Stats.Count;
+        _rangeSum = e.Stats.Sum;
+        Log($"rangeChanged: {e.Stats.Count} cells, sum {e.Stats.Sum}");
+    }
+
+    private void OnGroupExpanded(GridGroupExpandedEventArgs e)
+        => Log($"groupExpanded: {e.Key} expanded={e.Expanded} count={e.Group?.Count}");
+
+    private void OnMenuItem(GridContextMenuItemClickEventArgs<Employee> e)
+        => Log($"contextMenu: {e.Id} {e.Row?.Name} dataIndex={e.DataIndex} column={e.ColumnKey}");
+
+    private void Log(string line) => _log = line + "\n" + _log;
+
+    public class Employee
+    {
+        public string Name { get; set; } = "";
+        public string Department { get; set; } = "";
+        public string Region { get; set; } = "";
+        public int Salary { get; set; }
+        public int Age { get; set; }
+    }
+
+    public class Sale
+    {
+        public string Region { get; set; } = "";
+        public string Quarter { get; set; } = "";
+        public string Product { get; set; } = "";
+        public int Revenue { get; set; }
+    }
+}

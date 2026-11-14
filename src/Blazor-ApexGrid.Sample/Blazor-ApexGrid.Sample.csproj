@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Blazor-ApexGrid\Blazor-ApexGrid.csproj" />
+    <ProjectReference Include="..\Blazor-ApexGrid-Enterprise\Blazor-ApexGrid-Enterprise.csproj" />
   </ItemGroup>
 
 </Project>
