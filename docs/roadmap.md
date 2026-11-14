@@ -13,7 +13,7 @@ Last reviewed: 2026-11-14.
 **Decision: `Blazor-ApexGrid-Enterprise`, a companion package. Not an `Edition`
 parameter on this one.**
 
-**Built: Blazor-ApexGrid-Enterprise 0.1.0, with Blazor-ApexGrid 1.4.0
+**Built: Blazor-ApexGrid-Enterprise 0.1.0, with Blazor-ApexGrid 1.3.0
 (2026-11-14, not released).** What it is, and what is still open:
 
 - **Where.** `src/Blazor-ApexGrid-Enterprise`, a second project in this repo
@@ -21,7 +21,7 @@ parameter on this one.**
   metadata, packed with its own `README.md` and the commercial `LICENSE.md`
   that mirrors apex-grid-enterprise's terms. It references
   `Blazor-ApexGrid` as a project, which packs as a NuGet dependency
-  bounded to one minor (`[1.4.0, 1.5.0)`: the interop builds on
+  bounded to one minor (`[1.3.0, 1.4.0)`: the interop builds on
   Blazor-ApexGrid's internal module contract, so each Blazor-ApexGrid minor
   needs an enterprise release), and carries only its own static web assets.
   The package requires license acceptance. The enterprise publish workflow
@@ -45,7 +45,7 @@ parameter on this one.**
   `apex-grid-row` class. A bundle built with its own core fails those checks
   (tried by swapping one in): nothing throws and the grids still render,
   which is why the check is on the class chain.
-- **Seam opened in `ApexGrid<TItem>` (1.4.0).** `ExtendConfig` (protected
+- **Seam opened in `ApexGrid<TItem>` (1.3.0).** `ExtendConfig` (protected
   virtual: adds keys to the init config), `ElementId`, `IsInitialized` and
   `GetModuleAsync` (protected), and an `applyConfig` parameter on the
   interop `init` that a wrapping module passes. The `?ver=` cache busters
@@ -120,12 +120,10 @@ which package it lives in.
 
 ### Prerequisite, needed regardless of this decision
 
-**Met in 1.3.0, first published in 1.4.0.** `apex-grid-enterprise` 0.10.0
-depends on `apex-grid ^5.0.0` (as of 2026-11-14), and 1.3.0 vendors
-**5.0.0**. 1.3.0 was never published (nuget.org stops at 1.2.1), so 1.4.0
-is the first release on the 5.0.0 core and its release notes carry the 1.3.0
-changes. Keep the two in step: an enterprise release that needs a newer core
-needs this package bumped first. The original note follows.
+**Met in 1.3.0.** `apex-grid-enterprise` 0.10.0 depends on
+`apex-grid ^5.0.0` (as of 2026-11-14), and 1.3.0 vendors **5.0.0**. Keep the
+two in step: an enterprise release that needs a newer core needs this package
+bumped first. The original note follows.
 
 `apex-grid-enterprise` 0.8.0 depends on `apex-grid ^3.6.0` (as of 2026-10-31;
 it was 0.7.0 on `^3.5.0` when this was first written). We vendor **3.3.0**.
@@ -134,7 +132,7 @@ worth doing on its own merits.
 
 ### Seam to add when bumping the core
 
-**Done in 1.1.0, extended in 1.4.0** (see Built, above). The core was bundled at 3.6.0 then (5.0.0 from 1.3.0),
+**Done in 1.1.0, extended in 1.3.0** (see Built, above). The core was bundled at 3.6.0 then (5.0.0 from 1.3.0),
 and `ApexGrid<TItem>` has two protected virtual members: `ElementTagName` (the
 element it renders and waits for, passed to `init` as `tagName`) and
 `ModulePath` (the interop module to import). An enterprise component overrides

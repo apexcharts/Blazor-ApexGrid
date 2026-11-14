@@ -10,7 +10,7 @@
 //
 // ?ver= on each import is the version of the package that ships the file (both csproj builds
 // check it).
-import * as base from "../../Blazor-ApexGrid/js/blazor-apexgrid.js?ver=1.4.0";
+import * as base from "../../Blazor-ApexGrid/js/blazor-apexgrid.js?ver=1.3.0";
 import {
   ApexGridEnterprise,
   aggregationModule,
@@ -23,7 +23,7 @@ import {
 
 // Every other function (sorting, paging, editing, state, ...) is Blazor-ApexGrid's, unchanged: the
 // enterprise element extends <apex-grid>. init and destroy below take precedence over these.
-export * from "../../Blazor-ApexGrid/js/blazor-apexgrid.js?ver=1.4.0";
+export * from "../../Blazor-ApexGrid/js/blazor-apexgrid.js?ver=1.3.0";
 
 // ApexGridEnterpriseModules (.NET) ids -> apex-grid-enterprise feature modules
 const MODULES = {

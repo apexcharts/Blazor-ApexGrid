@@ -9,7 +9,7 @@
 // ?ver= is this package's version: the vendored files can change in a release that keeps the
 // same apex-grid version, and the cache key has to change with them. The csproj build checks
 // that every ?ver= here and in ApexGrid.razor is the package version.
-import "./apex-grid.bundle.js?ver=1.4.0";
+import "./apex-grid.bundle.js?ver=1.3.0";
 
 // pending or settled load of the Ignite UI add-on (loaded at most once)
 let igniteUILoad = null;
@@ -20,7 +20,7 @@ let igniteUILoad = null;
 export function loadIgniteUI() {
   if (!igniteUILoad) {
     // keep ?ver= in step with the core bundle import above
-    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=1.4.0").then(
+    igniteUILoad = import("./apex-grid.ignite-ui.bundle.js?ver=1.3.0").then(
       () => true,
       (error) => {
         console.error("failed to load the apex-grid Ignite UI add-on:", error);

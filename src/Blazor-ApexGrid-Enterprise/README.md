@@ -220,7 +220,7 @@ Blazor-ApexGrid's module before the enterprise bundle, so `<apex-grid-enterprise
 components can share a page in either render order.
 
 This package builds on Blazor-ApexGrid's interop module, which is not a public API, so it depends
-on Blazor-ApexGrid within one minor version: 0.1.0 takes `[1.4.0, 1.5.0)`. Each Blazor-ApexGrid
+on Blazor-ApexGrid within one minor version: 0.1.0 takes `[1.3.0, 1.4.0)`. Each Blazor-ApexGrid
 minor release is followed by an enterprise release that takes it; until then NuGet keeps
 Blazor-ApexGrid on the minor this package was built against. The enterprise bundle also checks the
 core it finds (apex-grid `^5.0.0` for this release) and refuses to load, with an error naming both
@@ -243,4 +243,4 @@ itself is never logged). One key works across every Apex product. Community `Ape
 components on the same page are not affected.
 
 Built on [apex-grid-enterprise](https://www.npmjs.com/package/apex-grid-enterprise) v0.10.0 and
-the apex-grid v5.0.0 core from Blazor-ApexGrid 1.4.0.
+the apex-grid v5.0.0 core from Blazor-ApexGrid 1.3.0.
