@@ -13,6 +13,65 @@ Last reviewed: 2026-11-14.
 **Decision: `Blazor-ApexGrid-Enterprise`, a companion package. Not an `Edition`
 parameter on this one.**
 
+**Built: Blazor-ApexGrid-Enterprise 0.1.0, with Blazor-ApexGrid 1.4.0
+(2026-11-14, not released).** What it is, and what is still open:
+
+- **Where.** `src/Blazor-ApexGrid-Enterprise`, a second project in this repo
+  (as Blazor-ApexCharts keeps its MAUI companion), same TFMs and package
+  metadata, packed with its own `README.md` and the commercial `LICENSE.md`
+  that mirrors apex-grid-enterprise's terms. It references
+  `Blazor-ApexGrid` as a project, which packs as a NuGet dependency
+  (`>= 1.4.0`), and carries only its own static web assets.
+- **One apex-grid core per page.** apex-grid-enterprise 0.10.0 imports
+  `apex-grid`, `apex-grid/internal` and Lit. The enterprise bundle inlines
+  none of them: `build/bundle.mjs` makes the community bundle publish those
+  modules' namespaces on a registry (`Symbol.for("blazor-apexgrid.shared")`,
+  the list is `build/shared.mjs`), and `build/bundle-enterprise.mjs`
+  answers every import of them from that registry (and fails the build if a
+  file of the core or Lit is inlined, or a bare import remains). The
+  enterprise interop module imports Blazor-ApexGrid's interop module first,
+  so the core has always run before the enterprise bundle, whichever
+  package's component renders first; the browser runs the core bundle URL
+  once. The enterprise bundle never names that URL, so a Blazor-ApexGrid
+  update that moves its `?ver=` cannot load a second core; it checks the
+  core's version against apex-grid-enterprise's range (`^5.0.0`) instead.
+  `tests/e2e/enterprise.mjs` proves it for enterprise first, community
+  first and both at once: `<apex-grid-enterprise>` extends the registered
+  `<apex-grid>` class, one core bundle URL, each core tag defined once, one
+  `apex-grid-row` class. A bundle built with its own core fails those checks
+  (tried by swapping one in): nothing throws and the grids still render,
+  which is why the check is on the class chain.
+- **Seam opened in `ApexGrid<TItem>` (1.4.0).** `ExtendConfig` (protected
+  virtual: adds keys to the init config), `ElementId`, `IsInitialized` and
+  `GetModuleAsync` (protected), and an `applyConfig` parameter on the
+  interop `init` that a wrapping module passes. The `?ver=` cache busters
+  now carry the package version, since the vendored core bundle changed
+  without a core bump.
+- **Modelled.** `GroupBy`, `GroupingOptions`, `Aggregations`, `TotalRow`,
+  `Pivot` (rows, on, values and `PivotOptions`), `RangeSelection`,
+  `ContextMenu` (on or off, and .NET items whose click raises
+  `OnContextMenuItemClick`, added through the `apex-context-menu-opening`
+  event so the built-in items stay), XLSX export (`ExportToXlsxAsync`,
+  `GetXlsxBytesAsync`, and the toolbar entry), `OnRangeChanged`,
+  `OnGroupExpanded`, and the group, aggregation, total, pivot and range
+  methods. The parameters apply on change, and only the ones that changed.
+- **Licence and modules.** `AddApexGridEnterprise(o => ...)` or the static
+  `ApexGridEnterprise.SetLicense` / `UseModules`; every declarative module
+  is selected by default. The first enterprise grid on a page calls
+  `use()`, `register()` and `setLicense()`.
+- **Deferred.** The server-side and infinite row models (the `getRows`
+  callback below), the six companion elements, master/detail, formulas,
+  integrated charts and the AI toolkit (its lazily loaded engine is replaced
+  in the bundle by a module that says so). Callback options are not
+  modelled: the context menu's `items` function and `run`, the cancellable
+  opening and `groupExpanding` events, and the export `formatter`.
+- **Publishing.** `.github/workflows/publish-nuget-enterprise.yml` runs on a
+  `release-enterprise: X.Y.Z` head commit and tags `enterprise-vX.Y.Z`; the
+  maintainer configures the NuGet trusted publishing policy for the new
+  package ID first. The community workflows now describe only `v*` tags.
+
+The decision record follows, as written before the build.
+
 `apex-grid-enterprise` is not a plugin that augments `<apex-grid>`. It is a
 separate custom element, `<apex-grid-enterprise>`, that inherits every community
 feature and adds the analytics tier on top. Its `define.js` registers only its
@@ -69,7 +128,7 @@ worth doing on its own merits.
 
 ### Seam to add when bumping the core
 
-**Done in 1.1.0.** The core was bundled at 3.6.0 then (5.0.0 from 1.3.0),
+**Done in 1.1.0, extended in 1.4.0** (see Built, above). The core was bundled at 3.6.0 then (5.0.0 from 1.3.0),
 and `ApexGrid<TItem>` has two protected virtual members: `ElementTagName` (the
 element it renders and waits for, passed to `init` as `tagName`) and
 `ModulePath` (the interop module to import). An enterprise component overrides
@@ -107,6 +166,9 @@ aggregation, pivot, total row, range selection, context menu and XLSX export.
 Those are config-driven and reuse `GridSerializer` as it stands. Defer the two
 row models and the six companion elements to a second pass. That gets the
 most-asked analytics features out at a fraction of the cost.
+
+(0.1.0 followed this order: the declarative modules are in, and both items
+above are still open.)
 
 ### Trigger
 

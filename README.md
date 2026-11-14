@@ -17,6 +17,9 @@ or npm build step is required in your app.
 - **Chart columns**: an ApexCharts chart in every cell, drawn with an ApexCharts the app loads.
 - **State persistence**: capture and restore a JSON snapshot of the whole view.
 - Multi-targets **net8.0**, **net9.0**, and **net10.0**.
+- **Enterprise features** (grouping, aggregation, pivot, a total row, range selection, a context
+  menu, XLSX export) are in the separate, commercially licensed
+  [Blazor-ApexGrid-Enterprise](#enterprise-features) package.
 
 ## Installation
 
@@ -353,9 +356,25 @@ and expose selected/affected rows as your `TItem`.
 | Expansion / tree | `OnRowExpanding`, `OnRowExpanded`, `OnTreeRowExpanding`, `OnTreeRowExpanded` |
 | State | `OnStateChanged` |
 
+## Enterprise features
+
+Row grouping, aggregations, pivoting, a grand-total row, cell range selection, a context menu
+and XLSX export come from apex-grid-enterprise, in a second package:
+
+```bash
+dotnet add package Blazor-ApexGrid-Enterprise
+```
+
+Its `ApexGridEnterprise<TItem>` component extends `ApexGrid<TItem>`, so everything above works
+on it unchanged. It depends on this package and reuses its apex-grid core, so community and
+enterprise grids can share a page with one copy of the core. ApexGrid Enterprise is a commercial
+product (Premium plan and above; without a license key it renders a trial watermark). See
+[src/Blazor-ApexGrid-Enterprise/README.md](src/Blazor-ApexGrid-Enterprise/README.md).
+
 ## Live demo
 
-A running sample (data grid, plus tree and row detail) is deployed at
+A running sample (data grid, tree and row detail, chart columns, and the enterprise grids) is
+deployed at
 <https://apexcharts.github.io/Blazor-ApexGrid/>. Source is under
 [`src/Blazor-ApexGrid.Sample`](src/Blazor-ApexGrid.Sample).
 
