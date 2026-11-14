@@ -53,6 +53,17 @@ try {
   // not installed: the page fetches the CDN copy
 }
 
+// The .NET dev server injects browser tooling (hot reload) that asks for files under
+// _framework/dotnet-browser-tools/; newer SDKs log a 404 for them on a Debug run. That request is
+// the tooling's, not the app's, so it is not an error here. Any other failed load is, and its URL is
+// kept in the message (the console text alone does not say which resource failed).
+function consoleError(m) {
+  const url = m.location()?.url ?? "";
+  if (url.includes("/_framework/dotnet-browser-tools/")) return null;
+  const text = m.text();
+  return (text.startsWith("Failed to load resource") && url ? `${text} (${url})` : text).slice(0, 300);
+}
+
 const failures = [];
 const browser = await chromium.launch(channel ? { channel, headless: true } : { headless: true });
 
@@ -99,7 +110,8 @@ async function openPage(path, { settings, signingKeySpki } = {}) {
   const consoleLog = [];
   page.on("console", (m) => {
     consoleLog.push({ type: m.type(), text: m.text() });
-    if (m.type() === "error") errors.push(m.text().slice(0, 200));
+    const error = m.type() === "error" ? consoleError(m) : null;
+    if (error) errors.push(error);
   });
   page.on("pageerror", (e) => errors.push("PAGEERROR: " + e.message.slice(0, 200)));
   // A deep link: the dev server serves the app for any route, so this loads the page's own

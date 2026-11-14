@@ -37,6 +37,17 @@ try {
   // not installed: the page fetches the CDN copy
 }
 
+// The .NET dev server injects browser tooling (hot reload) that asks for files under
+// _framework/dotnet-browser-tools/; newer SDKs log a 404 for them on a Debug run. That request is
+// the tooling's, not the app's, so it is not an error here. Any other failed load is, and its URL is
+// kept in the message (the console text alone does not say which resource failed).
+function consoleError(m) {
+  const url = m.location()?.url ?? "";
+  if (url.includes("/_framework/dotnet-browser-tools/")) return null;
+  const text = m.text();
+  return (text.startsWith("Failed to load resource") && url ? `${text} (${url})` : text).slice(0, 300);
+}
+
 const failures = [];
 const launchOpts = channel ? { channel, headless: true } : { headless: true };
 const browser = await chromium.launch(launchOpts);
@@ -47,7 +58,10 @@ if (apexChartsJs)
   );
 
 const pageErrors = [];
-page.on("console", (m) => { if (m.type() === "error") pageErrors.push(m.text().slice(0, 200)); });
+page.on("console", (m) => {
+  const error = m.type() === "error" ? consoleError(m) : null;
+  if (error) pageErrors.push(error);
+});
 page.on("pageerror", (e) => pageErrors.push("PAGEERROR: " + e.message.slice(0, 200)));
 
 // count elements of a given tag across all (nested) shadow roots
