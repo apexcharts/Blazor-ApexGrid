@@ -6,8 +6,10 @@ name: Publish Blazor-ApexGrid-Enterprise to NuGet (Trusted Publishing)
 #
 # Before the first run the maintainer configures a NuGet trusted publishing policy for the
 # Blazor-ApexGrid-Enterprise package ID (repository apexcharts/Blazor-ApexGrid, this workflow file,
-# environment nuget-publishing). The package depends on the Blazor-ApexGrid version its project
-# reference has, so that version must already be on nuget.org.
+# environment nuget-publishing). The package depends on Blazor-ApexGrid from the version its
+# project reference has up to the next minor ([X.Y.Z, X.(Y+1).0)), and nuget.org accepts a package
+# whose dependency is missing (consumers would then fail restore with NU1102), so the workflow
+# checks that the lower bound is already on nuget.org before it pushes.
 #
 # Unlike the community workflow this one does not pass /p:Version: a global property would also
 # reach the referenced Blazor-ApexGrid project and stamp that version on the package dependency.
@@ -96,6 +98,25 @@ jobs:
             exit 1
           fi
           unzip -p "$PKG" '*.nuspec' | grep -q 'id="Blazor-ApexGrid"'
+
+      # Publish Blazor-ApexGrid first: the version this package depends on must be on nuget.org, or
+      # every consumer's restore fails.
+      - name: Check that the Blazor-ApexGrid dependency is on nuget.org
+        run: |
+          PKG=./artifacts/Blazor-ApexGrid-Enterprise.${{ steps.check.outputs.version }}.nupkg
+          RANGE=$(unzip -p "$PKG" '*.nuspec' | grep -oE 'id="Blazor-ApexGrid" version="[^"]+"' | head -1 | sed -E 's/.*version="([^"]+)"/\1/')
+          MIN=$(echo "$RANGE" | sed -E 's/^[[(]//; s/,.*$//; s/[])]$//' | tr -d ' ')
+          echo "Blazor-ApexGrid dependency: $RANGE (needs $MIN on nuget.org)"
+          if [[ -z "$MIN" ]]; then
+            echo "Could not read the Blazor-ApexGrid dependency from the nuspec"
+            exit 1
+          fi
+          MIN_LOWER=$(echo "$MIN" | tr '[:upper:]' '[:lower:]')
+          if ! curl -fsSL https://api.nuget.org/v3-flatcontainer/blazor-apexgrid/index.json \
+              | jq -e --arg v "$MIN_LOWER" '.versions | index($v) != null' >/dev/null; then
+            echo "Blazor-ApexGrid $MIN is not on nuget.org yet. Publish it first (a 'release: $MIN' commit)."
+            exit 1
+          fi
 
       - name: NuGet login (OIDC -> short-lived API key)
         uses: NuGet/login@v1

@@ -21,7 +21,11 @@ parameter on this one.**
   metadata, packed with its own `README.md` and the commercial `LICENSE.md`
   that mirrors apex-grid-enterprise's terms. It references
   `Blazor-ApexGrid` as a project, which packs as a NuGet dependency
-  (`>= 1.4.0`), and carries only its own static web assets.
+  bounded to one minor (`[1.4.0, 1.5.0)`: the interop builds on
+  Blazor-ApexGrid's internal module contract, so each Blazor-ApexGrid minor
+  needs an enterprise release), and carries only its own static web assets.
+  The package requires license acceptance. The enterprise publish workflow
+  checks that the dependency's lower bound is on nuget.org before pushing.
 - **One apex-grid core per page.** apex-grid-enterprise 0.10.0 imports
   `apex-grid`, `apex-grid/internal` and Lit. The enterprise bundle inlines
   none of them: `build/bundle.mjs` makes the community bundle publish those

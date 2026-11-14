@@ -26,7 +26,9 @@ dotnet add package Blazor-ApexGrid-Enterprise
 ```
 
 This brings in `Blazor-ApexGrid` as a NuGet dependency. Nothing else is needed: the scripts are
-served from `_content/Blazor-ApexGrid-Enterprise/` and `_content/Blazor-ApexGrid/`.
+served from `_content/Blazor-ApexGrid-Enterprise/` and `_content/Blazor-ApexGrid/`. The package
+requires license acceptance: installing it means agreeing to the commercial license (see
+[Licensing](#licensing)).
 
 ## Setup
 
@@ -215,9 +217,13 @@ The enterprise bundle carries no apex-grid core and no Lit of its own. Blazor-Ap
 bundle publishes its core and Lit when it loads, and this package's interop module imports
 Blazor-ApexGrid's module before the enterprise bundle, so `<apex-grid-enterprise>` extends the very
 `ApexGrid` class registered as `<apex-grid>`. Community `ApexGrid` and `ApexGridEnterprise`
-components can share a page in either render order. Keep Blazor-ApexGrid at the version this
-package depends on or later within the same apex-grid major: the enterprise bundle checks the core
-it finds (apex-grid `^5.0.0` for this release) and refuses to load, with an error naming both
+components can share a page in either render order.
+
+This package builds on Blazor-ApexGrid's interop module, which is not a public API, so it depends
+on Blazor-ApexGrid within one minor version: 0.1.0 takes `[1.4.0, 1.5.0)`. Each Blazor-ApexGrid
+minor release is followed by an enterprise release that takes it; until then NuGet keeps
+Blazor-ApexGrid on the minor this package was built against. The enterprise bundle also checks the
+core it finds (apex-grid `^5.0.0` for this release) and refuses to load, with an error naming both
 versions, rather than run on one it was not built for.
 
 ## Licensing
