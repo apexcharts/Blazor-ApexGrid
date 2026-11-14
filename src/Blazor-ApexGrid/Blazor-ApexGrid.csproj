@@ -46,4 +46,18 @@
     <None Include="..\..\LICENSE.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
+  <!-- The ?ver= cache busters are kept equal by hand, so the build checks them: each one in the
+       interop module and in ApexGrid.razor's ModulePath must be the <Version> written above (read
+       from this file, so a /p:Version from a workflow does not count). Blazor-ApexGrid-Enterprise's
+       build checks its import of blazor-apexgrid.js against the same <Version>. -->
+  <Target Name="CheckCacheBusters" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_SourceVersion>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(MSBuildProjectFullPath)')), '(?s)^.*?&lt;Version&gt;\s*([^&lt;\s]+)\s*&lt;/Version&gt;.*$', '$1'))</_SourceVersion>
+      <_VersionPattern>$(_SourceVersion.Replace('.', '\.'))</_VersionPattern>
+      <_VerText>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/wwwroot/js/blazor-apexgrid.js'))$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/Components/ApexGrid.razor'))</_VerText>
+      <_VerStale>$([System.Text.RegularExpressions.Regex]::IsMatch($(_VerText), '\?ver=(?!$(_VersionPattern)[^\w.-])[\w.]'))</_VerStale>
+    </PropertyGroup>
+    <Error Condition="'$(_VerStale)' == 'True'" Text="Every ?ver= in wwwroot/js/blazor-apexgrid.js and Components/ApexGrid.razor must be this package's version, $(_SourceVersion)." />
+  </Target>
+
 </Project>

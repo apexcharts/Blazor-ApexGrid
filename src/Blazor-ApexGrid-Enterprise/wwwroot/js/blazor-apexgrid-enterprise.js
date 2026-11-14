@@ -8,7 +8,8 @@
 // the same page imports the same core bundle URL (from inside Blazor-ApexGrid's module), and the
 // browser runs a module URL once, so it does not matter which package's component renders first.
 //
-// ?ver= on each import is the version of the package that ships the file.
+// ?ver= on each import is the version of the package that ships the file (both csproj builds
+// check it).
 import * as base from "../../Blazor-ApexGrid/js/blazor-apexgrid.js?ver=1.4.0";
 import {
   ApexGridEnterprise,

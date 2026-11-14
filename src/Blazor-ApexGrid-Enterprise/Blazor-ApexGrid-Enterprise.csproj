@@ -42,4 +42,25 @@
     <None Include="LICENSE.md" Pack="true" PackagePath="" />
   </ItemGroup>
 
+  <!-- The ?ver= cache busters are kept equal by hand, so the build checks them: the interop module
+       must import Blazor-ApexGrid's module at that project's <Version> (another URL would evaluate
+       the community module twice), and this package's own URLs carry this package's <Version>.
+       Both are read from the csproj files, so a /p:Version from a workflow does not count. -->
+  <Target Name="CheckCacheBusters" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_VersionInCsproj>(?s)^.*?&lt;Version&gt;\s*([^&lt;\s]+)\s*&lt;/Version&gt;.*$</_VersionInCsproj>
+      <_CoreVersion>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/../Blazor-ApexGrid/Blazor-ApexGrid.csproj')), $(_VersionInCsproj), '$1'))</_CoreVersion>
+      <_OwnVersion>$([System.Text.RegularExpressions.Regex]::Replace($([System.IO.File]::ReadAllText('$(MSBuildProjectFullPath)')), $(_VersionInCsproj), '$1'))</_OwnVersion>
+      <_CoreVersionPattern>$(_CoreVersion.Replace('.', '\.'))</_CoreVersionPattern>
+      <_OwnVersionPattern>$(_OwnVersion.Replace('.', '\.'))</_OwnVersionPattern>
+      <_InteropText>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/wwwroot/js/blazor-apexgrid-enterprise.js'))</_InteropText>
+      <_OwnText>$(_InteropText)$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)/Components/ApexGridEnterprise.cs'))</_OwnText>
+      <_CoreUrlStale>$([System.Text.RegularExpressions.Regex]::IsMatch($(_InteropText), 'blazor-apexgrid\.js\?ver=(?!$(_CoreVersionPattern)[^\w.-])'))</_CoreUrlStale>
+      <_CoreUrlFound>$(_InteropText.Contains('blazor-apexgrid.js?ver=$(_CoreVersion)'))</_CoreUrlFound>
+      <_OwnUrlStale>$([System.Text.RegularExpressions.Regex]::IsMatch($(_OwnText), '(apex-grid-enterprise\.bundle|blazor-apexgrid-enterprise)\.js\?ver=(?!$(_OwnVersionPattern)[^\w.-])'))</_OwnUrlStale>
+    </PropertyGroup>
+    <Error Condition="'$(_CoreUrlStale)' == 'True' or '$(_CoreUrlFound)' != 'True'" Text="wwwroot/js/blazor-apexgrid-enterprise.js must import blazor-apexgrid.js?ver=$(_CoreVersion), the version of the referenced Blazor-ApexGrid project." />
+    <Error Condition="'$(_OwnUrlStale)' == 'True'" Text="Every apex-grid-enterprise.bundle.js and blazor-apexgrid-enterprise.js ?ver= in wwwroot/js/blazor-apexgrid-enterprise.js and Components/ApexGridEnterprise.cs must be this package's version, $(_OwnVersion)." />
+  </Target>
+
 </Project>
